@@ -14,7 +14,7 @@ class SlotsBased(type):
     ...     def foo(self):
     ...         pass
     
-    >>> class Bar(Foo):
+    >>> class Bar(Foo, bind=False):
     ...     __slots__ += ["_bar"]
     ...     def bar(self):
     ...         pass
@@ -27,8 +27,8 @@ class SlotsBased(type):
     >>> hasattr(bar, "foo")
         False
 
-    **Note**: a slots-based class does not inherit
-        the methods of the parent classes.
+    **Note**: since we initialized Bar with bind=False
+    it has not inherit the methods from the parent class.
     
     To access the methods of the parent class one
     needs to cast the instance to the parent class.
@@ -57,6 +57,7 @@ class SlotsBased(type):
 
         slots = set(attrs["__slots__"])
         bases = list(bases)
+        bind = kwargs.get("bind", True)
         for base in list(bases):
             if isinstance(base, SlotsBased):
                 assert slots.issuperset(
@@ -64,7 +65,8 @@ class SlotsBased(type):
                 ), """
                 Given slots do not match with base class
                 """
-                bases.remove(base)
+                if not bind:
+                    bases.remove(base)
 
         return super().__new__(cls, name, tuple(bases), attrs)
 
