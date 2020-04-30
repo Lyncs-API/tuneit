@@ -41,11 +41,9 @@ class SlotsBased(type):
     @classmethod
     def __prepare__(cls, name, bases, **kwargs):
         "Collects the slots from bases"
-        assert not kwargs, "kwargs not used"
 
         slots = set()
         for base in bases:
-            print(base)
             if isinstance(base, SlotsBased):
                 slots.update(base.__slots__)
 
@@ -53,7 +51,6 @@ class SlotsBased(type):
 
     def __new__(cls, name, bases, attrs, **kwargs):
         "Checks that all slots of bases are subset of __slots__"
-        assert not kwargs, "kwargs not used"
 
         slots = set(attrs["__slots__"])
         bases = list(bases)
@@ -74,17 +71,26 @@ class SlotsBased(type):
         "Either calls the class initialization or simply casts"
 
         args = tuple(args)
-        if len(args) == 1 and isinstance(type(args[0]), SlotsBased):
-            obj = cls.__new__(cls)
+        obj = cls.__new__(cls)
+
+        if len(args) == 1 and (
+            isinstance(args[0], cls) or issubclass(cls, type(args[0]))
+        ):
             for slot in obj.__slots__:
                 try:
                     value = getattr(type(args[0]), slot).__get__(args[0])
                     getattr(cls, slot).__set__(obj, value)
                 except AttributeError:
-                    pass
-            return obj
+                    getattr(cls, slot).__set__(obj, Slot())
+        else:
+            for slot in obj.__slots__:
+                getattr(cls, slot).__set__(obj, Slot())
+            try:
+                obj.__init__(*args, **kwargs)
+            except AttributeError:
+                pass
 
-        return super().__call__(*args, **kwargs)
+        return obj
 
     def __subclasscheck__(cls, child):
         "Checks if child is subclass of class"
@@ -95,3 +101,15 @@ class SlotsBased(type):
     def __instancecheck__(cls, instance):
         "Checks if instance is instance of cls"
         return issubclass(type(instance), cls)
+
+
+class Slot:
+    __slots__ = ["_value"]
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
