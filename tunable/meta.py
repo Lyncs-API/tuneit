@@ -1,26 +1,52 @@
+"Defines the CastableType metaclass used by the module"
+# pylint: disable=C0303,C0330
+
 __all__ = [
-    "SlotsBased",
+    "CastableType",
 ]
 
 
-class SlotsBased(type):
+class Slot:
     """
-    A metaclass for slots-based classes.
+    An holder of the slot value. 
+    Needed for passing by reference the slots between views of the class.
+    """
 
-    >>> from tunable.meta import SlotsBased
+    __slots__ = ["value"]
+
+    @classmethod
+    def getter(cls, key):
+        "Returns the getter function"
+
+        def fget(self):
+            return getattr(type(self), key).__get__(self).value
+
+        return fget
+
+    @classmethod
+    def setter(cls, key):
+        "Returns the setter function"
+
+        def fset(self, value):
+            getattr(type(self), key).__get__(self).value = value
+
+        return fset
+
+
+class CastableType(type):
+    """
+    A metaclass for castable classes.
+
+    >>> from tunable.meta import CastableType
     
-    >>> class Foo(metaclass=SlotsBased):
-    ...     __slots__ = ["_foo"]
-    ...     def foo(self):
-    ...         pass
+    >>> class Foo(metaclass=CastableType, slots=["foo"]):
+    ...     pass
     
-    >>> class Bar(Foo, bind=False):
-    ...     __slots__ += ["_bar"]
-    ...     def bar(self):
-    ...         pass
+    >>> class Bar(Foo, slots=["bar"], bind=False):
+    ...     pass
     
     >>> Bar.__slots__
-        ["_foo", "_bar"]
+        ["Foo_foo", "Bar_bar"]
     >>> issubclass(Bar, Foo)
         True
     >>> bar = Bar()
@@ -43,11 +69,19 @@ class SlotsBased(type):
         "Collects the slots from bases"
 
         slots = set()
+        attrs = dict()
         for base in bases:
-            if isinstance(base, SlotsBased):
+            if isinstance(base, CastableType):
                 slots.update(base.__slots__)
 
-        return {"__slots__": list(slots)}
+        for slot in kwargs.get("slots", []):
+            key = "%s_%s" % (name, slot)
+            attrs[slot] = property(Slot.getter(key), Slot.setter(key))
+            slots.add(key)
+
+        attrs["__slots__"] = list(slots)
+        print(attrs)
+        return attrs
 
     def __new__(cls, name, bases, attrs, **kwargs):
         "Checks that all slots of bases are subset of __slots__"
@@ -56,7 +90,7 @@ class SlotsBased(type):
         bases = list(bases)
         bind = kwargs.get("bind", True)
         for base in list(bases):
-            if isinstance(base, SlotsBased):
+            if isinstance(base, CastableType):
                 assert slots.issuperset(
                     base.__slots__
                 ), """
@@ -71,7 +105,10 @@ class SlotsBased(type):
         "Either calls the class initialization or simply casts"
 
         args = tuple(args)
+
+        # pylint: disable=E1120
         obj = cls.__new__(cls)
+        # pylint: enable=E1120
 
         if len(args) == 1 and (
             isinstance(args[0], cls) or issubclass(cls, type(args[0]))
@@ -94,22 +131,10 @@ class SlotsBased(type):
 
     def __subclasscheck__(cls, child):
         "Checks if child is subclass of class"
-        return isinstance(child, SlotsBased) and set(child.__slots__).issuperset(
+        return isinstance(child, CastableType) and set(child.__slots__).issuperset(
             cls.__slots__
         )
 
     def __instancecheck__(cls, instance):
         "Checks if instance is instance of cls"
         return issubclass(type(instance), cls)
-
-
-class Slot:
-    __slots__ = ["_value"]
-
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, value):
-        self._value = value
