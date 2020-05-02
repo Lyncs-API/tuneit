@@ -80,7 +80,6 @@ class CastableType(type):
             slots.add(key)
 
         attrs["__slots__"] = list(slots)
-        print(attrs)
         return attrs
 
     def __new__(cls, name, bases, attrs, **kwargs):
