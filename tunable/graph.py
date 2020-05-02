@@ -194,7 +194,10 @@ def visualize(graph, start=None, end=None, **kwargs):
 
         dot.node(node.key, node.label, **node.dot_attrs)
 
-        for left in node.dependencies:
+        for left in node:
+            if not isinstance(left, Node):
+                continue
+            left = Node(left).key
             if start and start != left and start not in graph[left].dependencies:
                 continue
             dot.edge(left, node.key)
