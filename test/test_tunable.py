@@ -1,6 +1,7 @@
 from tunable.graph import visualize
 from tunable.tunable import *
 from tunable.tunable import Tunable
+from tunable.finalize import finalize
 from pytest import raises
 
 def one():
@@ -14,6 +15,9 @@ def test_tunable():
     assert compute(b) == 4
     assert repr(b).startswith("Tunable")
     assert visualize(b).source
+    assert set(finalize(b).variables) == set([finalize(a).key, finalize(c).key])
+    assert set(finalize(b).tunable_variables) == set([finalize(a).key, finalize(c).key])
+    assert finalize(b).fixed_variables == ()
     
     to_string = tunable(str)
     c = to_string(b)

@@ -37,9 +37,9 @@ class HighLevel(Node):
     @property
     def tunable_variables(self):
         "List of variables that are tunable"
-        return tuple(var for var in self.variables if self.graph[var].value.tunable)
+        return tuple(var for var in self.variables if not self.graph[var].value.fixed)
 
     @property
     def fixed_variables(self):
         "List of variables that are fixed"
-        return tuple(var for var in self.variables if not self.graph[var].value.tunable)
+        return tuple(var for var in self.variables if self.graph[var].value.fixed)

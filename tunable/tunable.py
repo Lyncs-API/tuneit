@@ -187,7 +187,7 @@ class Function(Object):
         return dict(shape="oval")
 
 
-def variable(var, default=None, label=None, uid=None):
+def variable(var, value=None, label=None, uid=None, fixed=False):
     """
     A tunable variable.
 
@@ -195,7 +195,7 @@ def variable(var, default=None, label=None, uid=None):
     ----------
     var: Iterable
         An iterator over the possible values of the variable
-    default: Any
+    value: Any
         The default value for the variable. If None the first element is used.
     label: str
         A label used to identify the variable
@@ -203,20 +203,21 @@ def variable(var, default=None, label=None, uid=None):
         Unique identifier for the variable.
     """
     label = label or varname()
-    return Tunable(Variable(var, default=default, label=label, uid=uid))
+    return Tunable(Variable(var, value=value, label=label, uid=uid, fixed=fixed))
 
 
 @dataclass
 class Variable(Object):
     "The Variable dataclass"
-    default: Any = None
+    value: Any = None
+    fixed: bool = False
 
     def __post_init__(self):
         if not isinstance(self.var, Iterable):
             raise TypeError("The first argument of Variable must be iterable")
 
-        if self.default is None:
-            self.default = next(iter(self.var))
+        if self.value is None:
+            self.value = next(iter(self.var))
 
         super().__post_init__()
 
@@ -225,23 +226,12 @@ class Variable(Object):
         "Alias of obj"
         return self.obj
 
-    @property
-    def fixed(self):
-        return hasattr(self, "value")
-
-    @property
-    def tunable(self):
-        return not self.fixed
-
     def __compute__(self):
-        if self.fixed:
-            return compute(self.value)
-        else:
-            return compute(self.default)
+        return compute(self.value)
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="diamond", color="red" if self.tunable else "green")
+        return dict(shape="diamond", color="red" if self.fixed else "green")
 
 
 def get_key(obj):
