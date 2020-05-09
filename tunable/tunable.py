@@ -231,7 +231,7 @@ class Variable(Object):
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="diamond", color="red" if self.fixed else "green")
+        return dict(shape="diamond", color="green" if self.fixed else "red")
 
 
 def get_key(obj):
@@ -242,7 +242,8 @@ def get_key(obj):
         key = "???"
     try:
         key += "-" + md5(dumps(obj)).hexdigest()
-    except TypeError:
+    except Exception as e:
+        # print(type(e).__name__,e)
         key += "-" + md5(bytes(str(uuid4()), "utf-8")).hexdigest()
     return key
 
