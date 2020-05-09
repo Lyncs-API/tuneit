@@ -130,10 +130,14 @@ class Node(Graph, bind=False, slots=["key"]):
     @property
     def dependencies(self):
         "Iterates over the dependencies"
+        deps = [self.key]
+        yield deps[0]
         for val in self:
             if isinstance(val, Node):
-                yield from Node(val).dependencies
-                yield Node(val).key
+                for dep in Node(val).dependencies:
+                    if dep not in deps:
+                        deps.append(dep)
+                        yield dep
 
     def visualize(self, **kwargs):
         """
@@ -176,12 +180,14 @@ def visualize(graph, start=None, end=None, **kwargs):
     if end is not None:
         assert end in graph, "end not in graph"
         end = graph[end]
-        keys = list(end.dependencies) + [end.key]
+        keys = list(end.dependencies)
     else:
         keys = list(graph.keys())
 
     if isinstance(start, Node):
         start = Node(start).key
+
+    if start:
         assert start in keys, "start not in graph"
 
     dot = default_graph(**kwargs)
@@ -189,7 +195,7 @@ def visualize(graph, start=None, end=None, **kwargs):
     for key in keys:
         node = graph[key]
 
-        if start and start != key and start not in node.dependencies:
+        if start and start not in node.dependencies:
             continue
 
         dot.node(node.key, node.label, **node.dot_attrs)
@@ -198,7 +204,7 @@ def visualize(graph, start=None, end=None, **kwargs):
             if not isinstance(left, Node):
                 continue
             left = Node(left).key
-            if start and start != left and start not in graph[left].dependencies:
+            if start and start not in graph[left].dependencies:
                 continue
             dot.edge(left, node.key)
 

@@ -32,6 +32,5 @@ def test_graph():
     assert b.graph == a
     assert a == a.backend
 
-    assert a.visualize().source == b.visualize().source
-    assert a.visualize().source == b.visualize(start="foo").source
+    assert b.visualize().source == b.visualize(start="foo").source
     assert b.visualize().source != b.visualize(start=a["foo2"]).source
