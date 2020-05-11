@@ -209,17 +209,30 @@ def variable(var, value=None, label=None, uid=None, fixed=False):
 @dataclass
 class Variable(Object):
     "The Variable dataclass"
-    value: Any = None
+    _value: Any = None
     fixed: bool = False
 
-    def __post_init__(self):
-        if not isinstance(self.var, Iterable):
+    def __init__(self, var, value=None, fixed=False, **kwargs):
+        if not isinstance(var, Iterable):
             raise TypeError("The first argument of Variable must be iterable")
 
-        if self.value is None:
-            self.value = next(iter(self.var))
+        if value is None:
+            self.value = next(iter(var))
+        else:
+            self.value = value
+        self.fixed = fixed
 
-        super().__post_init__()
+        super().__init__(var, **kwargs)
+
+    @property
+    def value(self):
+        if self.fixed:
+            return self._value
+        return Tunable(self)
+
+    @value.setter
+    def value(self, value):
+        self._value = value
 
     @property
     def var(self):
@@ -227,7 +240,7 @@ class Variable(Object):
         return self.obj
 
     def __compute__(self):
-        return compute(self.value)
+        return compute(self._value)
 
     @property
     def __dot_attrs__(self):
