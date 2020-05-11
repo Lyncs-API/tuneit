@@ -169,7 +169,7 @@ class Function(Object):
     def __compute__(self):
         fnc = compute(self.fnc)
         args = list(map(compute, self.args))
-        kwargs = dict(zip(self.kwargs.keys(), map(compute, self.kwargs.items())))
+        kwargs = dict(zip(self.kwargs.keys(), map(compute, self.kwargs.values())))
         return fnc(*args, **kwargs)
 
     @property
@@ -240,7 +240,8 @@ class Variable(Object):
         return self.obj
 
     def __compute__(self):
-        return compute(self._value)
+        self.fixed = True
+        return compute(self.value)
 
     @property
     def __dot_attrs__(self):
