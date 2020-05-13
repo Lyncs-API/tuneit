@@ -2,4 +2,5 @@
 
 from .graph import *
 from .tunable import *
+from .variable import *
 from .class_utils import *

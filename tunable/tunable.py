@@ -6,7 +6,6 @@ __all__ = [
     "function",
     "Function",
     "tunable",
-    "variable",
 ]
 
 import operator
@@ -15,7 +14,6 @@ from hashlib import md5
 from pickle import dumps
 from uuid import uuid4
 from dataclasses import dataclass
-from collections.abc import Iterable
 from copy import copy
 from typing import Any
 from varname import varname as _varname
@@ -187,67 +185,6 @@ class Function(Object):
         return dict(shape="oval")
 
 
-def variable(var, value=None, label=None, uid=None, fixed=False):
-    """
-    A tunable variable.
-
-    Parameters
-    ----------
-    var: Iterable
-        An iterator over the possible values of the variable
-    value: Any
-        The default value for the variable. If None the first element is used.
-    label: str
-        A label used to identify the variable
-    uuid: Any
-        Unique identifier for the variable.
-    """
-    label = label or varname()
-    return Tunable(Variable(var, value=value, label=label, uid=uid, fixed=fixed))
-
-
-@dataclass
-class Variable(Object):
-    "The Variable dataclass"
-    _value: Any = None
-    fixed: bool = False
-
-    def __init__(self, var, value=None, fixed=False, **kwargs):
-        if not isinstance(var, Iterable):
-            raise TypeError("The first argument of Variable must be iterable")
-
-        if value is None:
-            self.value = next(iter(var))
-        else:
-            self.value = value
-        self.fixed = fixed
-
-        super().__init__(var, **kwargs)
-
-    @property
-    def value(self):
-        if self.fixed:
-            return self._value
-        return Tunable(self)
-
-    @value.setter
-    def value(self, value):
-        self._value = value
-
-    @property
-    def var(self):
-        "Alias of obj"
-        return self.obj
-
-    def __compute__(self):
-        self.fixed = True
-        return compute(self.value)
-
-    @property
-    def __dot_attrs__(self):
-        return dict(shape="diamond", color="green" if self.fixed else "red")
-
-
 def get_key(obj):
     "Get the key used by Tunable"
     try:
@@ -256,8 +193,8 @@ def get_key(obj):
         key = "???"
     try:
         key += "-" + md5(dumps(obj)).hexdigest()
-    except Exception as e:
-        # print(type(e).__name__,e)
+    except Exception as _:
+        # print(type(_).__name__,_)
         key += "-" + md5(bytes(str(uuid4()), "utf-8")).hexdigest()
     return key
 
