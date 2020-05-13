@@ -3,7 +3,8 @@ High Level vision of Tunable object
 """
 
 from .graph import Node
-from .tunable import Variable, Function
+from .variable import Variable
+from .tunable import Function
 
 
 def finalize(tunable):

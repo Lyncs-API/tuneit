@@ -13,7 +13,8 @@ __all__ = [
 from functools import partial, wraps
 from uuid import uuid4
 from .graph import Graph, Node, visualize
-from .tunable import Tunable, function, tunable, compute, Variable
+from .tunable import Tunable, function, tunable, compute
+from .variable import Variable
 from .finalize import finalize
 
 
@@ -111,11 +112,15 @@ class tunable_property(property):
         try:
             return getattr(obj, self.key)
         except AttributeError:
-            setattr(
-                obj,
-                self.key,
-                Variable(super().__get__(obj, owner), label=self.name, uid=obj.uid),
-            )
+            var = super().__get__(obj, owner)
+            if isinstance(var, Variable):
+                var.label = var.label or self.name
+                var.uid = var.uid or obj.uid
+            else:
+                var = Variable(
+                    super().__get__(obj, owner), label=self.name, uid=obj.uid
+                )
+            setattr(obj, self.key, var)
             return self.__get__(obj, owner)
 
     def __set__(self, obj, value):

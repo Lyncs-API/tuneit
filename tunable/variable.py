@@ -3,11 +3,14 @@
 __all__ = [
     "variable",
     "Variable",
+    "Permutation",
 ]
 
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
+from itertools import permutations
+from math import factorial
 from .tunable import Tunable, Object, varname, compute
 
 
@@ -40,13 +43,13 @@ class Variable(Object):
         if not isinstance(var, Iterable):
             raise TypeError("The first argument of Variable must be iterable")
 
+        super().__init__(var, **kwargs)
+
         if value is None:
-            self.value = next(iter(var))
+            self.value = next(iter(self))
         else:
             self.value = value
         self.fixed = fixed
-
-        super().__init__(var, **kwargs)
 
     @property
     def value(self):
@@ -67,6 +70,9 @@ class Variable(Object):
     def __len__(self):
         return len(self.var)
 
+    def __iter__(self):
+        return iter(self.var)
+
     def __compute__(self):
         self.fixed = True
         return compute(self.value)
@@ -74,3 +80,13 @@ class Variable(Object):
     @property
     def __dot_attrs__(self):
         return dict(shape="diamond", color="green" if self.fixed else "red")
+
+
+class Permutation(Variable):
+    "Permutations of the given list"
+
+    def __len__(self):
+        return factorial(len(self.var))
+
+    def __iter__(self):
+        return permutations(self.var)
