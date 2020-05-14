@@ -253,5 +253,21 @@ def add_operators(cls, wrapper):
             assert fnc2 is getattr(operator, fnc)
             setattr(cls, fnc, wrapper(fnc2))
 
+    def roperator(fnc):
+        "Default operator wrapper"
+        return lambda arg1, arg2: function(fnc, arg2, arg1)
+
+    rops = (
+        "__radd__",
+        "__rmod__",
+        "__rmul__",
+        "__rpow__",
+        "__rsub__",
+        "__rtruediv__",
+        "__rfloordiv__",
+    )
+    for fnc in rops:
+        setattr(cls, fnc, roperator(getattr(operator, fnc[3:-2])))
+
 
 add_operators(Tunable, default_operator)
