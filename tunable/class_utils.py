@@ -21,24 +21,9 @@ from .finalize import finalize
 class TunableClass:
     "Base class for tunable classes"
 
-    def __init__(self, value=None, locked_value=False):
-        self._locked_value = False
+    def __init__(self, value=None):
         self.value = value
         self.uid = value
-        self.locked_value = locked_value
-
-    @property
-    def locked_value(self):
-        "Whether the value can be changed"
-        return self._locked_value
-
-    @locked_value.setter
-    def locked_value(self, value):
-        if bool(value) == self.locked_value:
-            return
-        if self.locked_value:
-            raise ValueError("locked_value can only be changed from False to True")
-        self.locked_value = bool(value)
 
     @property
     def value(self):
@@ -47,9 +32,6 @@ class TunableClass:
 
     @value.setter
     def value(self, value):
-        assert (
-            not self.locked_value
-        ), "The value of the class is locked and cannot be changed"
         if isinstance(value, Node):
             self._value = Tunable(value)
         elif isinstance(value, TunableClass):
