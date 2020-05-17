@@ -2,6 +2,10 @@
 High Level vision of Tunable object
 """
 
+__all__ = [
+    "finalize",
+]
+
 from .graph import Node
 from .variable import Variable
 from .tunable import Function
@@ -44,3 +48,11 @@ class HighLevel(Node):
     def fixed_variables(self):
         "List of variables that are fixed"
         return tuple(var for var in self.variables if self.graph[var].value.fixed)
+
+    def depends_on(self, value):
+        "Returns true if the given value is in the graph"
+        if isinstance(value, Node):
+            return Node(value).key in self.dependencies
+        if isinstance(value, Variable):
+            return self.depends_on(value.value)
+        return False
