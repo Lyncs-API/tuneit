@@ -124,9 +124,14 @@ class tunable_property(property):
             return self.__get__(obj, owner)
 
     def __set__(self, obj, value):
-        var = getattr(obj, self.key)
-        var.value = value
-        var.fixed = True
+
+        var = self.__get__(obj, type(obj))
+
+        if isinstance(value, Variable):
+            setattr(obj, self.key, value)
+        else:
+            var.value = value
+            var.fixed = True
 
 
 def skip_n_args(fnc, num):

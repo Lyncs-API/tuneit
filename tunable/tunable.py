@@ -6,6 +6,7 @@ __all__ = [
     "function",
     "Function",
     "tunable",
+    "Tunable",
 ]
 
 import operator

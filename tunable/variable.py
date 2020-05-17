@@ -81,6 +81,10 @@ class Variable(Object):
     def __dot_attrs__(self):
         return dict(shape="diamond", color="green" if self.fixed else "red")
 
+    def new(self):
+        "Returns a copy of self but with a different uid"
+        return type(self)(self.var, value=self.value, label=self.label, uid=True)
+
 
 class Permutation(Variable):
     "Permutations of the given list"
