@@ -73,6 +73,12 @@ class Variable(Object):
     def __iter__(self):
         return iter(self.var)
 
+    @property
+    def __graph__(self):
+        if self.fixed:
+            return self.value
+        return None
+
     def __compute__(self):
         self.fixed = True
         return compute(self.value)

@@ -53,18 +53,18 @@ class Graph(metaclass=CastableType, slots=["backend"]):
     def __iter__(self):
         return iter(self.backend)
 
-    def join(self, graph):
-        "Join two graphs in one, both having the same backend"
-        graph = Graph(graph)
-        self.update(graph.backend)
-        graph.backend = self.backend
-
     def visualize(self, **kwargs):
         """
         Visualizes the complete graph.
         For more details see help(visualize).
         """
         return visualize(self, **kwargs)
+
+    def update(self, value):
+        "Updates the content of the dictionary"
+        if isinstance(value, Graph):
+            return self.backend.update(Graph(value).backend)
+        return self.backend.update(value)
 
 
 class Node(Graph, bind=False, slots=["key"]):
@@ -159,10 +159,13 @@ def join_graphs(graphs):
     if isinstance(graphs, str):
         return Graph()
 
+    if hasattr(graphs, "__graph__"):
+        return join_graphs(graphs.__graph__)
+
     if isinstance(graphs, Iterable):
         graph = Graph()
         graphs = map(join_graphs, graphs)
-        deque(map(graph.join, graphs))
+        deque(map(graph.update, graphs))
         return graph
 
     return Graph()

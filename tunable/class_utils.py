@@ -45,6 +45,10 @@ class TunableClass:
         return Graph(self.value)
 
     @property
+    def __graph__(self):
+        return self.value
+
+    @property
     def uid(self):
         "Unique id of the field"
         return self._uid
