@@ -13,7 +13,7 @@ __all__ = [
 from functools import partial, wraps
 from uuid import uuid4
 from .graph import Graph, Node, visualize
-from .tunable import Tunable, function, tunable, compute
+from .tunable import Tunable, function, tunable, compute, varname
 from .variable import Variable
 from .finalize import finalize
 
@@ -38,6 +38,11 @@ class TunableClass:
             self._value = value.value
         else:
             self._value = tunable(value, label="value")
+
+    @property
+    def node(self):
+        "Returns the node of the tunable value"
+        return finalize(self.value)
 
     @property
     def graph(self):
@@ -79,17 +84,17 @@ class TunableClass:
     @property
     def variables(self):
         "List of variables in the class graph"
-        return finalize(self.value).variables
+        return self.node.variables
 
     @property
     def tunable_variables(self):
         "List of tunable variables in the class graph"
-        return finalize(self.value).tunable_variables
+        return self.node.tunable_variables
 
     @property
     def fixed_variables(self):
         "List of fixed variables in the class graph"
-        return finalize(self.value).fixed_variables
+        return self.node.fixed_variables
 
 
 class tunable_property(property):
@@ -120,6 +125,7 @@ class tunable_property(property):
             if isinstance(var, Variable):
                 var.label = var.label or self.name
                 var.uid = var.uid or obj.uid
+                var = var.copy()
             else:
                 var = Variable(
                     super().__get__(obj, owner), label=self.name, uid=obj.uid
