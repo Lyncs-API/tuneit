@@ -113,6 +113,11 @@ class Node(Graph, bind=False, slots=["key"]):
         return Graph(self)
 
     def __eq__(self, value):
+        if isinstance(value, Node):
+            value = Node(value)
+            return self.key == value.key and self.graph == value.graph
+        if isinstance(value, Node):
+            return False
         return self.value == value
 
     def __iter__(self):
