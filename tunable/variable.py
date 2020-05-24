@@ -36,7 +36,7 @@ def variable(var, value=None, label=None, uid=None, fixed=False):
 @dataclass
 class Variable(Object):
     "The Variable dataclass"
-    _value: Any = None
+    default: Any = None
     fixed: bool = False
 
     def __init__(self, var, value=None, fixed=False, **kwargs):
@@ -46,21 +46,20 @@ class Variable(Object):
         super().__init__(var, **kwargs)
 
         if value is None:
-            self.value = next(iter(self))
+            self.default = next(iter(self))
         else:
-            self.value = value
-        self.fixed = fixed
+            self.default = value
+        if fixed:
+            self.value = self.default
+        elif len(self.var) < 2:
+            self.value = self.default
 
-    @property
-    def value(self):
-        "Value of the variable. If not fixed is a tunable object"
-        if self.fixed:
-            return self._value
-        return Tunable(self)
-
-    @value.setter
+    @Object.value.setter
     def value(self, value):
+        if self.fixed:
+            raise RuntimeError("Cannot change a value that has been fixed")
         self._value = value
+        self.fixed = True
 
     @property
     def var(self):
@@ -75,21 +74,29 @@ class Variable(Object):
 
     @property
     def __graph__(self):
-        if self.fixed:
-            return self.value
-        return None
+        return self.value
 
     def __compute__(self):
-        self.fixed = True
+        if not self.fixed:
+            self.value = self.default
         return compute(self.value)
 
     @property
     def __dot_attrs__(self):
         return dict(shape="diamond", color="green" if self.fixed else "red")
 
-    def new(self):
-        "Returns a copy of self but with a different uid"
-        return type(self)(self.var, value=self.value, label=self.label, uid=True)
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("value", self.value if self.fixed else self.default)
+        kwargs.setdefault("fixed", self.fixed)
+        return super().copy(**kwargs)
+
+    def __repr__(self):
+        return "%s(%s%s)" % (
+            type(self).__name__,
+            self.var,
+            ", fixed=True" if self.fixed else "",
+        )
 
 
 class Permutation(Variable):

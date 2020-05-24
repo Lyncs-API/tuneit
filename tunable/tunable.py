@@ -55,7 +55,7 @@ def tunable(obj, label=None, uid=None):
         Unique identifier for the object.
     """
     label = label or varname(default="")
-    return Tunable(Object(obj, label=label, uid=uid))
+    return Object(obj, label=label, uid=uid).value
 
 
 @dataclass
@@ -64,6 +64,7 @@ class Object:
     obj: Any
     label: str = None
     uid: Any = None
+    _value: Any = None
 
     def __post_init__(self):
         if isinstance(self.obj, Object):
@@ -84,6 +85,17 @@ class Object:
             except AttributeError:
                 self.__name__ = repr(self.obj)
 
+        self._value = Tunable(self)
+
+    @property
+    def value(self):
+        "Value of the tunable object"
+        return self._value
+
+    @property
+    def __graph__(self):
+        return self.value
+
     def __compute__(self):
         return compute(self.obj)
 
@@ -97,6 +109,12 @@ class Object:
 
     def __iter__(self):
         yield self.obj
+
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("label", self.label)
+        kwargs.setdefault("uid", self.uid)
+        return type(self)(self.obj, **kwargs)
 
 
 def function(fnc, *args, **kwargs):
@@ -112,14 +130,14 @@ def function(fnc, *args, **kwargs):
     kwargs: dict
         List of named args for the function
     """
-    return Tunable(Function(fnc, args=args, kwargs=kwargs))
+    return Function(fnc, args=args, kwargs=kwargs).value
 
 
 @dataclass
 class Function(Object):
     "The Function dataclass"
 
-    args: list = None
+    args: tuple = None
     kwargs: dict = None
 
     labels = {
@@ -141,14 +159,19 @@ class Function(Object):
             raise TypeError("The first argument of Function must be callable")
 
         if self.args is None:
-            self.args = []
+            self.args = ()
         else:
-            self.args = list(self.args)
+            self.args = tuple(
+                arg.value if isinstance(arg, Object) else arg for arg in self.args
+            )
 
         if self.kwargs is None:
             self.kwargs = {}
         else:
-            self.kwargs = dict(self.kwargs)
+            self.kwargs = {
+                key: arg.value if isinstance(arg, Object) else arg
+                for key, arg in self.kwargs.items()
+            }
 
         super().__post_init__()
 
@@ -157,13 +180,21 @@ class Function(Object):
         "Alias of obj"
         return self.obj
 
+    @property
+    def __graph__(self):
+        return self.__iter__()
+
     def __iter__(self):
         yield self.fnc
         yield from self.args
-        yield from self.kwargs.items()
+        yield from self.kwargs.values()
 
     def __call__(self, *args, **kwargs):
-        return function(self, *self.args, *args, **self.kwargs, **kwargs)
+        tmp = self.kwargs.copy()
+        tmp.update(kwargs)
+        return Function(
+            self, args=(self.args + args), kwargs=tmp, label=self.__label__
+        ).value
 
     def __compute__(self):
         fnc = compute(self.fnc)
@@ -173,10 +204,15 @@ class Function(Object):
 
     @property
     def __label__(self):
-        if self.__name__ in Function.labels:
-            return Function.labels[self.__name__]
+        label = self.__name__
+        if label.startswith("__"):
+            label = label[2:]
+        if label.endswith("__"):
+            label = label[:-2]
+        if label in Function.labels:
+            return Function.labels[label]
 
-        if self.fnc in (getattr, setattr):
+        if label in ("getattr", "setattr"):
             return "." + self.args[1] + "=" if self.fnc is setattr else ""
 
         return super().__label__
