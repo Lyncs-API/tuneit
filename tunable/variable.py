@@ -56,8 +56,14 @@ class Variable(Object):
 
     @Object.value.setter
     def value(self, value):
-        if self.fixed:
+        if self.fixed and value != self.value:
             raise RuntimeError("Cannot change a value that has been fixed")
+        if value is Variable:
+            value = value.value
+        if isinstance(value, Iterable):
+            value = tuple(value)
+        if not isinstance(value, Tunable) and value not in self:
+            raise ValueError("Value %s not compatible with variable" % (value,))
         self._value = value
         self.fixed = True
 
@@ -65,6 +71,11 @@ class Variable(Object):
     def var(self):
         "Alias of obj"
         return self.obj
+
+    def __eq__(self, other):
+        if isinstance(other, Variable):
+            return super().__eq__(other)
+        return self.value == other
 
     def __len__(self):
         return len(self.var)
