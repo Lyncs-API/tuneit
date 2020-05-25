@@ -77,9 +77,9 @@ class TunableClass:
 
     @property
     def result(self):
-        "Returns the value of the class after compute"
+        "Returns the value of the class after computing"
         self.compute()
-        return Node(self.value).value
+        return self.node.value.obj
 
     @property
     def variables(self):
@@ -167,7 +167,7 @@ def derived_method(*deps):
         @wraps(fnc)
         def derived(self, *args, **kwargs):
             _deps = (dep.__get__(self, type(self)) for dep in deps)
-            _deps = tuple(dep.value for dep in _deps if not dep.fixed)
+            _deps = tuple(dep.value for dep in _deps if isinstance(dep.value, Tunable))
             if _deps:
                 return function(
                     skip_n_args(fnc, len(_deps)), *_deps, self, *args, **kwargs
@@ -198,7 +198,6 @@ class derived_property(property):
         super().__init__(*args, **kwargs)
 
         self.deps = deps or ()
-        self.computable = not bool(self.deps)
         self.__name__ = self.name
 
         assert all(
@@ -206,12 +205,10 @@ class derived_property(property):
         ), "TODO: improve check"
 
     def __get__(self, obj, owner):
-        if not self.computable:
-            deps = (dep.__get__(obj, owner) for dep in self.deps)
-            deps = tuple(dep.value for dep in deps if not dep.fixed)
-            if deps:
-                return function(self, obj, owner, *deps)
-            self.computable = True
+        deps = (dep.__get__(obj, owner) for dep in self.deps)
+        deps = tuple(dep.value for dep in deps if isinstance(dep.value, Tunable))
+        if deps:
+            return function(self, obj, owner, *deps)
         return super().__get__(obj, owner)
 
     def __call__(self, obj, owner, *args, **kwargs):
