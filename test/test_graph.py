@@ -29,7 +29,6 @@ def test_graph():
     assert repr(a).startswith("Graph")
     assert repr(a["foo"]).startswith("Node")
 
-    assert b.graph == a
     assert a == a.backend
 
     assert b.visualize().source == b.visualize(start="foo").source
