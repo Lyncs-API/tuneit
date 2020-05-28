@@ -6,12 +6,12 @@ __all__ = [
     "visualize",
 ]
 
-from collections import OrderedDict, deque
+from collections import deque
 from collections.abc import Iterable
 from .meta import CastableType
 
 
-class Graph(metaclass=CastableType, slots=["backend"]):
+class Graph(metaclass=CastableType, attrs=["backend"]):
     """
     A Graph class.
     """
@@ -19,24 +19,31 @@ class Graph(metaclass=CastableType, slots=["backend"]):
     def __init__(self, graph=None):
         if isinstance(graph, Graph):
             graph = graph.backend
-        self.backend = graph or OrderedDict()
+        self.backend = {} if graph is None else dict(graph)
 
     def __getitem__(self, key):
-        if isinstance(key, Node):
-            key = Node(key).key
+        if isinstance(key, Key):
+            key = Key(key).key
         node = Node(self)
-        node.key = key
+        Key(node).key = key
         return node
 
     def __setitem__(self, key, value):
+        if isinstance(key, Key):
+            key = Key(key).key
         self.backend[key] = value
+
+    def __delitem__(self, key):
+        if isinstance(key, Key):
+            key = Key(key).key
+        del self.backend[key]
 
     def __getattr__(self, key):
         return getattr(self.backend, key)
 
     def __contains__(self, key):
-        if isinstance(key, Node):
-            key = Node(key).key
+        if isinstance(key, Key):
+            key = Key(key).key
         return key in self.backend
 
     def __eq__(self, value):
@@ -63,19 +70,64 @@ class Graph(metaclass=CastableType, slots=["backend"]):
     def update(self, value):
         "Updates the content of the dictionary"
         if isinstance(value, Graph):
-            return self.backend.update(Graph(value).backend)
+            value = Graph(value).backend
         return self.backend.update(value)
 
+    def copy(self):
+        "Shallow copy of a Graph"
+        return Graph(self.backend.copy())
 
-class Node(Graph, bind=False, slots=["key"]):
+
+class Key(metaclass=CastableType, attrs=["key"]):
+    "Namespace for the keys of tunable objects"
+
+    def __init__(self, key):
+        if isinstance(key, Key):
+            key = Key(key).key
+        self.key = key
+
+    def __repr__(self):
+        return "Key(%s)" % repr(self.key)
+
+    def __str__(self):
+        return str(self.key)
+
+    def __eq__(self, value):
+        if isinstance(value, Key):
+            return self.key == Key(value).key
+        return self.key == value
+
+    def __getattr__(self, key):
+        return getattr(self.key, key)
+
+    def __hash__(self):
+        return hash(self.key)
+
+
+class Node(Graph, Key, bind=False):
     """
     A node of the graph
     """
 
     def __init__(self, key, value=None):
         Graph.__init__(self.graph, join_graphs(value))
-        self.graph[key] = value
-        self.key = key
+        Key.__init__(self.key, key)
+
+        if key not in self.graph:
+            self.graph[key] = value
+        elif not isinstance(value, Graph) or self == value:
+            raise KeyError("%s already in graph and the value will not be changed")
+
+        for part in self:
+            try:
+                Key.__cast__(part)
+            except TypeError:
+                pass
+
+    @property
+    def key(self):
+        "Returns the key of the node"
+        return Key(self)
 
     @property
     def label(self):
@@ -100,7 +152,7 @@ class Node(Graph, bind=False, slots=["key"]):
     @property
     def value(self):
         "Value of the node"
-        return self.graph.backend[self.key]
+        return self.graph.backend[Key(self).key]
 
     @value.setter
     def value(self, value):
@@ -114,10 +166,9 @@ class Node(Graph, bind=False, slots=["key"]):
 
     def __eq__(self, value):
         if isinstance(value, Node):
-            value = Node(value)
-            return self.key == value.key and self.graph == value.graph
-        if isinstance(value, Node):
-            return False
+            return self.key == value and self.value == Node(value).value
+        if isinstance(value, Key):
+            return self.key == value
         return self.value == value
 
     def __iter__(self):
@@ -132,12 +183,27 @@ class Node(Graph, bind=False, slots=["key"]):
     def __str__(self):
         return str(self.value)
 
+    def __copy__(self):
+        return Node(Key(self), Graph(self))
+
+    def copy(self):
+        return self.__copy__()
+
+    @property
+    def first_dependencies(self):
+        "Iterates over the dependencies"
+        for val in self:
+            if isinstance(val, Key):
+                yield Key(val)
+
     @property
     def dependencies(self):
         "Iterates over the dependencies"
         deps = [self.key]
         yield deps[0]
         for val in self:
+            if isinstance(val, Key):
+                val = self.graph[val]
             if isinstance(val, Node):
                 for dep in Node(val).dependencies:
                     if dep not in deps:
@@ -156,7 +222,7 @@ def join_graphs(graphs):
     "Joins all the graphs in graphs into a unique instance"
 
     if isinstance(graphs, Graph):
-        return Graph(graphs)
+        return Graph(graphs).copy()
 
     if isinstance(graphs, dict):
         return join_graphs(graphs.values())
@@ -164,12 +230,9 @@ def join_graphs(graphs):
     if isinstance(graphs, str):
         return Graph()
 
-    if hasattr(graphs, "__graph__"):
-        return join_graphs(graphs.__graph__)
-
     if isinstance(graphs, Iterable):
         graph = Graph()
-        graphs = map(join_graphs, graphs)
+        graphs = filter(lambda obj: isinstance(obj, Graph), graphs)
         deque(map(graph.update, graphs))
         return graph
 
@@ -186,17 +249,18 @@ def visualize(graph, start=None, end=None, **kwargs):
     graph = Graph(graph)
 
     if end is not None:
-        assert end in graph, "end not in graph"
+        if end not in graph:
+            raise KeyError("Given end %s not in graph" % end)
         end = graph[end]
-        keys = list(end.dependencies)
+        keys = tuple(end.dependencies)
     else:
-        keys = list(graph.keys())
+        keys = tuple(graph.keys())
 
     if isinstance(start, Node):
         start = Node(start).key
 
-    if start:
-        assert start in keys, "start not in graph"
+    if start and start not in keys:
+        raise KeyError("Given start %s not in graph" % end)
 
     dot = default_graph(**kwargs)
 
@@ -206,15 +270,12 @@ def visualize(graph, start=None, end=None, **kwargs):
         if start and start not in node.dependencies:
             continue
 
-        dot.node(node.key, node.label, **node.dot_attrs)
+        dot.node(str(key), node.label, **node.dot_attrs)
 
-        for left in node:
-            if not isinstance(left, Node):
+        for dep in node.first_dependencies:
+            if start and start not in graph[dep].dependencies:
                 continue
-            left = Node(left).key
-            if start and start not in graph[left].dependencies:
-                continue
-            dot.edge(left, node.key)
+            dot.edge(str(dep), str(key))
 
     return dot
 

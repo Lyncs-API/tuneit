@@ -19,7 +19,7 @@ class Slot:
         "Returns the getter function"
 
         def fget(self):
-            return getattr(type(self), key).__get__(self).value
+            return getattr(type(self), "__values__").__get__(self)[key].value
 
         return fget
 
@@ -28,7 +28,7 @@ class Slot:
         "Returns the setter function"
 
         def fset(self, value):
-            getattr(type(self), key).__get__(self).value = value
+            getattr(type(self), "__values__").__get__(self)[key].value = value
 
         return fset
 
@@ -39,13 +39,13 @@ class CastableType(type):
 
     >>> from tunable.meta import CastableType
     
-    >>> class Foo(metaclass=CastableType, slots=["foo"]):
+    >>> class Foo(metaclass=CastableType, attrs=["foo"]):
     ...     pass
     
-    >>> class Bar(Foo, slots=["bar"], bind=False):
+    >>> class Bar(Foo, attrs=["bar"], bind=False):
     ...     pass
     
-    >>> Bar.__slots__
+    >>> Bar.__attrs__
         ["Foo_foo", "Bar_bar"]
     >>> issubclass(Bar, Foo)
         True
@@ -65,40 +65,57 @@ class CastableType(type):
     """
 
     @classmethod
-    def __prepare__(cls, name, bases, **kwargs):
-        "Collects the slots from bases"
+    def caster(cls, scls):
+        "Returns the cast function for the given subclass (scls)"
 
-        slots = set()
-        attrs = dict()
+        def __cast__(self):
+            if not isinstance(self, scls):
+                raise TypeError("Cannot cast %s" % repr(self))
+            for key in tuple(getattr(type(self), "__values__").__get__(self).keys()):
+                if key not in scls.__attrs__:
+                    del getattr(type(self), "__values__").__get__(self)[key]
+            object.__setattr__(self, "__class__", scls)
+
+        return __cast__
+
+    @classmethod
+    def __prepare__(cls, name, bases, **kwargs):
+        "Collects the attrs from bases"
+
+        attrs = set()
+        class_attrs = {}
         for base in bases:
             if isinstance(base, CastableType):
-                slots.update(base.__slots__)
+                attrs.update(base.__attrs__)
 
-        for slot in kwargs.get("slots", []):
-            key = "%s_%s" % (name, slot)
-            attrs[slot] = property(Slot.getter(key), Slot.setter(key))
-            slots.add(key)
+        for attr in kwargs.get("attrs", ()):
+            key = "%s_%s" % (name, attr)
+            class_attrs[attr] = property(Slot.getter(key), Slot.setter(key))
+            attrs.add(key)
 
-        attrs["__slots__"] = list(slots)
-        return attrs
+        class_attrs["__attrs__"] = tuple(attrs)
+        class_attrs["__slots__"] = ("__values__",)
+        return class_attrs
 
-    def __new__(cls, name, bases, attrs, **kwargs):
-        "Checks that all slots of bases are subset of __slots__"
+    def __new__(cls, name, bases, class_attrs, **kwargs):
+        "Checks that all attrs of bases are subset of __attrs__"
 
-        slots = set(attrs["__slots__"])
+        attrs = set(class_attrs["__attrs__"])
         bases = list(bases)
         bind = kwargs.get("bind", True)
         for base in list(bases):
             if isinstance(base, CastableType):
-                assert slots.issuperset(
-                    base.__slots__
+                assert attrs.issuperset(
+                    base.__attrs__
                 ), """
-                Given slots do not match with base class
+                Given attrs do not match with base class
                 """
                 if not bind:
                     bases.remove(base)
 
-        return super().__new__(cls, name, tuple(bases), attrs)
+        self = super().__new__(cls, name, tuple(bases), class_attrs)
+        self.__cast__ = cls.caster(self)
+        return self
 
     def __call__(cls, *args, **kwargs):
         "Either calls the class initialization or simply casts"
@@ -108,19 +125,21 @@ class CastableType(type):
         # pylint: disable=E1120
         obj = cls.__new__(cls)
         # pylint: enable=E1120
+        values = dict()
+        getattr(cls, "__values__").__set__(obj, values)
 
         if len(args) == 1 and (
             isinstance(args[0], cls) or issubclass(cls, type(args[0]))
         ):
-            for slot in obj.__slots__:
-                try:
-                    value = getattr(type(args[0]), slot).__get__(args[0])
-                    getattr(cls, slot).__set__(obj, value)
-                except AttributeError:
-                    getattr(cls, slot).__set__(obj, Slot())
+            for attr in obj.__attrs__:
+                values[attr] = (
+                    getattr(type(args[0]), "__values__")
+                    .__get__(args[0])
+                    .get(attr, Slot())
+                )
         else:
-            for slot in obj.__slots__:
-                getattr(cls, slot).__set__(obj, Slot())
+            for attr in obj.__attrs__:
+                values[attr] = Slot()
             try:
                 obj.__init__(*args, **kwargs)
             except AttributeError:
@@ -130,8 +149,8 @@ class CastableType(type):
 
     def __subclasscheck__(cls, child):
         "Checks if child is subclass of class"
-        return isinstance(child, CastableType) and set(child.__slots__).issuperset(
-            cls.__slots__
+        return isinstance(child, CastableType) and set(child.__attrs__).issuperset(
+            cls.__attrs__
         )
 
     def __instancecheck__(cls, instance):
