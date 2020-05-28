@@ -43,9 +43,9 @@ def sample(tunable, variables=None, samples=100, **kwargs):
     Parameters
     ----------
     variables: list of str
-        Set of variables to sample during the comparison
+        Set of variables to sample.
     samples: int
-        The number of samples to use in the crosscheck. If None, all the combinations are sampled.
+        The number of samples to run. If None, all the combinations are sampled.
     kwargs: dict
         Variables passed to the compute function. See help(tunable.compute)
     """
@@ -60,7 +60,7 @@ def sample(tunable, variables=None, samples=100, **kwargs):
         idxs = set(random.sample(range(tot), samples))
         values = map(lambda t: t[1], filter(lambda t: t[0] in idxs, enumerate(values)))
 
-    yield (variables, tunable)
+    yield variables, tunable
     for value in values:
         tmp = tunable.copy()
         for var, val in zip(variables, value):
@@ -69,4 +69,4 @@ def sample(tunable, variables=None, samples=100, **kwargs):
             result = tmp.compute(**kwargs)
         except Exception as err:
             result = err
-        yield (value, result)
+        yield value, result
