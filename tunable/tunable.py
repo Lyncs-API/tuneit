@@ -3,23 +3,26 @@
 
 __all__ = [
     "compute",
+    "Tunable",
+    "tunable",
+    "Object",
     "function",
     "Function",
-    "tunable",
-    "Tunable",
 ]
 
 import operator
 import warnings
+from inspect import ismethod
+from collections import deque
+from collections.abc import Iterable
 from hashlib import md5
 from pickle import dumps
 from uuid import uuid4
 from dataclasses import dataclass
-from copy import copy
 from typing import Any
 from varname import varname as _varname
 
-from .graph import Graph, Node
+from .graph import Graph, Node, Key
 
 
 def varname(caller=1, default=None):
@@ -33,15 +36,25 @@ def varname(caller=1, default=None):
         warnings.filterwarnings("default")
 
 
-def compute(obj):
+def compute(obj, **kwargs):
     "Compute the value of a tunable object"
-    try:
-        return obj.__compute__()
-    except AttributeError:
+    kwargs.setdefault("maxiter", 3)
+    if kwargs["maxiter"] <= 0:
         return obj
+    if isinstance(obj, Node):
+        kwargs.setdefault("graph", Node(obj).graph)
+    if isinstance(obj, Key) and not isinstance(obj, Node):
+        obj = kwargs["graph"][obj].value
+    try:
+        obj = obj.__compute__(**kwargs)
+        kwargs["maxiter"] -= 1
+        obj = compute(obj, **kwargs)
+    except AttributeError:
+        pass
+    return obj
 
 
-def tunable(obj, label=None, uid=None):
+def tunable(obj, deps=None, label=None, uid=None):
     """
     A tunable object.
     
@@ -55,66 +68,111 @@ def tunable(obj, label=None, uid=None):
         Unique identifier for the object.
     """
     label = label or varname(default="")
-    return Object(obj, label=label, uid=uid).value
+    return Object(obj, deps=deps, label=label, uid=uid).tunable()
 
 
 @dataclass
 class Object:
     "A generic object dataclass"
     obj: Any
+    deps: Any = None
     label: str = None
     uid: Any = None
-    _value: Any = None
+
+    @classmethod
+    def extract_deps(cls, deps):
+        "Converts a list of deps into Nodes"
+        if deps is None:
+            return ()
+        if not isinstance(deps, Iterable) or isinstance(deps, (Object, Node)):
+            deps = (deps,)
+        keys = None
+        if isinstance(deps, dict):
+            keys = deps.keys()
+            deps = deps.values()
+        deps = tuple(
+            dep.tunable()
+            if isinstance(dep, Object)
+            else Node(dep)
+            if isinstance(dep, Node)
+            else dep
+            for dep in deps
+        )
+        if keys:
+            return tuple(zip(keys, deps))
+        return deps
 
     def __post_init__(self):
         if isinstance(self.obj, Object):
-            self.uid = self.obj.uid
-            self.label = self.obj.label
+            if self.uid is None:
+                self.uid = self.obj.uid
+            if self.label is None:
+                self.label = self.obj.label
             self.obj = self.obj.obj
+
+        self.deps = Object.extract_deps(self.deps)
 
         if self.uid is True:
             self.uid = str(uuid4())
 
-        if self.label:
-            self.__name__ = self.label
-        elif isinstance(self.obj, Node):
-            self.__name__ = Node(self.obj).label
+        if self.label is None:
+            if isinstance(self.obj, Node):
+                self.label = Node(self.obj).label
+            else:
+                try:
+                    self.label = self.obj.__name__
+                except AttributeError:
+                    self.label = repr(self.obj)
+
+    def tunable(self):
+        "Returns a tunable object"
+        return Tunable(self)
+
+    @property
+    def dependencies(self):
+        "Returns the list of dependencies for the Object"
+        return Node(self.tunable()).dependencies
+
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("deps", self.deps)
+        kwargs.setdefault("label", self.label)
+        kwargs.setdefault("uid", self.uid)
+        return type(self)(self.obj, **kwargs)
+
+    @property
+    def key(self):
+        "Get the key used by Tunable"
+        key = self.label + "-"
+
+        if self.uid:
+            key = key + md5(dumps(self.uid)).hexdigest()
         else:
             try:
-                self.__name__ = self.obj.__name__
-            except AttributeError:
-                self.__name__ = repr(self.obj)
+                key = key + md5(dumps(tuple(self))).hexdigest()
+            except Exception as _:
+                self.uid = str(uuid4())
+                return self.key
 
-        self._value = Tunable(self)
+        return Key(key)
 
-    @property
-    def value(self):
-        "Value of the tunable object"
-        return self._value
+    def __iter__(self):
+        yield self.obj
+        yield from self.deps
 
-    @property
-    def __graph__(self):
-        return self.value
-
-    def __compute__(self):
-        return compute(self.obj)
+    def __compute__(self, **kwargs):
+        # pylint: disable=W0108
+        cmpt = lambda obj: compute(obj, **kwargs)
+        deque(map(cmpt, self.deps))
+        return self.obj
 
     @property
     def __label__(self):
-        return self.label or self.__name__
+        return self.label
 
     @property
     def __dot_attrs__(self):
         return dict(shape="rect")
-
-    def __iter__(self):
-        yield self.obj
-
-    def copy(self, **kwargs):
-        "Returns a copy of self"
-        kwargs.setdefault("label", self.label)
-        kwargs.setdefault("uid", self.uid)
-        return type(self)(self.obj, **kwargs)
 
 
 def function(fnc, *args, **kwargs):
@@ -130,7 +188,7 @@ def function(fnc, *args, **kwargs):
     kwargs: dict
         List of named args for the function
     """
-    return Function(fnc, args=args, kwargs=kwargs).value
+    return Function(fnc, args=args, kwargs=kwargs).tunable()
 
 
 @dataclass
@@ -158,20 +216,8 @@ class Function(Object):
         if not callable(self.fnc):
             raise TypeError("The first argument of Function must be callable")
 
-        if self.args is None:
-            self.args = ()
-        else:
-            self.args = tuple(
-                arg.value if isinstance(arg, Object) else arg for arg in self.args
-            )
-
-        if self.kwargs is None:
-            self.kwargs = {}
-        else:
-            self.kwargs = {
-                key: arg.value if isinstance(arg, Object) else arg
-                for key, arg in self.kwargs.items()
-            }
+        self.args = Object.extract_deps(self.args)
+        self.kwargs = dict(Object.extract_deps(self.kwargs))
 
         super().__post_init__()
 
@@ -180,31 +226,41 @@ class Function(Object):
         "Alias of obj"
         return self.obj
 
-    @property
-    def __graph__(self):
-        return self.__iter__()
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("args", self.args)
+        kwargs.setdefault("kwargs", self.kwargs)
+        return super().copy(**kwargs)
 
     def __iter__(self):
-        yield self.fnc
+        yield from super().__iter__()
         yield from self.args
         yield from self.kwargs.values()
 
     def __call__(self, *args, **kwargs):
         tmp = self.kwargs.copy()
         tmp.update(kwargs)
-        return Function(
-            self, args=(self.args + args), kwargs=tmp, label=self.__label__
-        ).value
+        return self.copy(args=(self.args + args), kwargs=tmp).tunable()
 
-    def __compute__(self):
-        fnc = compute(self.fnc)
-        args = list(map(compute, self.args))
-        kwargs = dict(zip(self.kwargs.keys(), map(compute, self.kwargs.values())))
-        return fnc(*args, **kwargs)
+    def __compute__(self, **kwargs):
+        # pylint: disable=W0108
+        cmpt = lambda obj: compute(obj, **kwargs)
+        fnc = cmpt(self.fnc)
+        args = list(map(cmpt, self.args))
+        kwargs = dict(zip(self.kwargs.keys(), map(cmpt, self.kwargs.values())))
+        res = fnc(*args, **kwargs)
+        if res is None:
+            if ismethod(fnc) or fnc is setattr:
+                return args[0]
+            if hasattr(fnc, "__self__"):
+                return fnc.__self__
+            if args:
+                return args[0]
+        return res
 
     @property
     def __label__(self):
-        label = self.__name__
+        label = self.label
         if label.startswith("__"):
             label = label[2:]
         if label.endswith("__"):
@@ -212,43 +268,63 @@ class Function(Object):
         if label in Function.labels:
             return Function.labels[label]
 
-        if label in ("getattr", "setattr"):
-            return "." + self.args[1] + "=" if self.fnc is setattr else ""
+        if (
+            label in ("getattr", "setattr", "callattr")
+            and self.args
+            and len(self.args) >= 2
+        ):
+            return (
+                "."
+                + self.args[1]
+                + (
+                    "=..."
+                    if label == "setattr"
+                    else "(...)"
+                    if label == "callattr"
+                    else ""
+                )
+            )
 
-        return super().__label__
+        return label
 
     @property
     def __dot_attrs__(self):
         return dict(shape="oval")
 
 
-def get_key(obj):
-    "Get the key used by Tunable"
-    try:
-        key = obj.__name__
-    except AttributeError:
-        key = "???"
-    try:
-        key += "-" + md5(dumps(obj)).hexdigest()
-    except Exception as _:
-        # print(type(_).__name__,_)
-        key += "-" + md5(bytes(str(uuid4()), "utf-8")).hexdigest()
-    return key
+def callattr(self, key, *args, **kwargs):
+    "Get attribute from self and then calls it with args, kwargs"
+    return getattr(self, key)(*args, **kwargs)
 
 
 class Tunable(Node, bind=False):
-    "A class that turns any operation on instances into a graph node"
+    "A class that turns any operation into a graph node"
 
     def __init__(self, obj):
-        Node.__init__(Node(self), get_key(obj), obj)
+        if not isinstance(obj, Object):
+            raise TypeError("Expected an Object")
+
+        Node.__init__(Node(self), obj.key, obj.copy())
 
     def __setattr__(self, key, value):
-        tmp = function(setattr, copy(self), key, value)
-        Node(self).key = Node(tmp).key
-        Graph(self).backend = Graph(tmp).backend
+        tmp = Node(function(setattr, Node(self).copy(), key, value))
+        Key(self).key = tmp.key
+        Graph(self).backend = tmp.graph.backend
 
     def __call__(self, *args, **kwargs):
-        return function(self, *args, **kwargs)
+        tmp = Node(self).value
+        if (
+            isinstance(tmp, Function)
+            and tmp.fnc is getattr
+            and len(tmp.args) == 2
+            and not tmp.kwargs
+        ):
+            value = Function(callattr, args=tmp.args + args, kwargs=kwargs)
+            graph = Graph(self).copy()
+            del graph[Key(self)]
+            graph[value.key] = value
+            return Tunable(graph[value.key])
+        return function(Tunable(Node(self).copy()), *args, **kwargs)
 
     def __repr__(self):
         return "Tunable(%s)" % Node(self).key
@@ -261,16 +337,16 @@ class Tunable(Node, bind=False):
     def __getstate__(self):
         return Node(self).key
 
-    def __copy__(self):
-        return Tunable(Node(Node(self).key, Node(self).value))
-
-    def __compute__(self):
-        return compute(Node(self).value)
+    def __compute__(self, **kwargs):
+        # pylint: disable=W0613
+        return Node(self).value
 
 
 def default_operator(fnc):
     "Default operator wrapper"
-    return lambda *args, **kwargs: function(fnc, *args, **kwargs)
+    return lambda self, *args, **kwargs: function(
+        fnc, Node(self).copy(), *args, **kwargs
+    )
 
 
 def add_operators(cls, wrapper):
