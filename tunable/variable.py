@@ -11,10 +11,10 @@ from dataclasses import dataclass
 from typing import Any
 from itertools import permutations
 from math import factorial
-from .tunable import Tunable, Object, varname, compute
+from .tunable import Tunable, Object, varname
 
 
-def variable(var, value=None, label=None, uid=None, fixed=False):
+def variable(var, default=None, label=None, uid=None):
     """
     A tunable variable.
 
@@ -22,7 +22,7 @@ def variable(var, value=None, label=None, uid=None, fixed=False):
     ----------
     var: Iterable
         An iterator over the possible values of the variable
-    value: Any
+    default: Any
         The default value for the variable. If None the first element is used.
     label: str
         A label used to identify the variable
@@ -30,91 +30,125 @@ def variable(var, value=None, label=None, uid=None, fixed=False):
         Unique identifier for the variable.
     """
     label = label or varname()
-    return Tunable(Variable(var, value=value, label=label, uid=uid, fixed=fixed))
+    return Variable(var, default=default, label=label, uid=uid).tunable()
+
+
+class Value:
+    "Simple class to hold the value of the variable"
+    __slots__ = ["value"]
+
+    @property
+    def fixed(self):
+        "Returns if the value has been fixed"
+        return hasattr(self, "value")
 
 
 @dataclass
 class Variable(Object):
     "The Variable dataclass"
     default: Any = None
-    fixed: bool = False
+    _value: Value = None
 
-    def __init__(self, var, value=None, fixed=False, **kwargs):
-        if not isinstance(var, Iterable):
+    def __post_init__(self):
+        if not isinstance(self.var, Iterable):
             raise TypeError("The first argument of Variable must be iterable")
 
-        super().__init__(var, **kwargs)
+        if self.default is None:
+            self.default = next(iter(self.values))
 
-        if value is None:
-            self.default = next(iter(self))
-        else:
-            self.default = value
-        if fixed:
-            self.value = self.default
-        elif len(self.var) < 2:
-            self.value = self.default
+        if self.default not in self.values:
+            raise ValueError("Default value not in variable's value")
 
-    @Object.value.setter
-    def value(self, value):
+        if self._value is None:
+            self._value = Value()
+        assert isinstance(self._value, Value), "Value must be of Value type"
+
+        super().__post_init__()
+
+    @property
+    def fixed(self):
+        "Returns if the value has been fixed"
+        return self._value.fixed
+
+    def fix(self, value=None):
+        "Fixes the value of the variable"
         if self.fixed and value != self.value:
             raise RuntimeError("Cannot change a value that has been fixed")
-        if value is Variable:
-            value = value.value
+        if value is None:
+            value = self.default
+        if isinstance(value, Variable):
+            value = value.tunable()
         if isinstance(value, Iterable):
             value = tuple(value)
-        if not isinstance(value, Tunable) and value not in self:
+        if not isinstance(value, Tunable) and value not in self.values:
             raise ValueError("Value %s not compatible with variable" % (value,))
-        self._value = value
-        self.fixed = True
+        self._value.value = value
+
+    @property
+    def value(self):
+        "Returns the value of the variable. If it is not fixed, the default value is returned."
+        if self.fixed:
+            return self._value.value
+        return self.default
+
+    @value.setter
+    def value(self, value):
+        self.fix(value)
 
     @property
     def var(self):
         "Alias of obj"
         return self.obj
 
+    def __iter__(self):
+        yield self.var
+        yield self.value
+
     def __eq__(self, other):
         if isinstance(other, Variable):
             return super().__eq__(other)
         return self.value == other
 
-    def __len__(self):
+    @property
+    def size(self):
+        "Returns the size of the variable range"
         return len(self.var)
 
-    def __iter__(self):
-        return iter(self.var)
-
     @property
-    def __graph__(self):
-        return self.value
+    def values(self):
+        "Returns the value in the variable range"
+        return self.var
 
-    def __compute__(self):
+    def __compute__(self, **kwargs):
         if not self.fixed:
             self.value = self.default
-        return compute(self.value)
+        return self.value
 
     @property
     def __dot_attrs__(self):
         return dict(shape="diamond", color="green" if self.fixed else "red")
 
-    def copy(self, **kwargs):
+    def copy(self, reset=False, **kwargs):
         "Returns a copy of self"
-        kwargs.setdefault("value", self.value if self.fixed else self.default)
-        kwargs.setdefault("fixed", self.fixed)
+        kwargs.setdefault("default", self.default)
+        kwargs.setdefault("_value", self._value if not reset else None)
         return super().copy(**kwargs)
 
     def __repr__(self):
         return "%s(%s%s)" % (
             type(self).__name__,
             self.var,
-            ", fixed=True" if self.fixed else "",
+            ", value=%s" % self.value if self.fixed else "",
         )
 
 
 class Permutation(Variable):
     "Permutations of the given list"
 
-    def __len__(self):
+    @property
+    def size(self):
         return factorial(len(self.var))
 
-    def __iter__(self):
+    @property
+    def values(self):
         return permutations(self.var)
