@@ -30,8 +30,8 @@ def test_variable():
         variable(range(10), default=11)
 
     d = Variable(range(10))
-    assert d == Variable(range(10))
-    assert d != Variable(range(11))
+    assert d == Variable(range(10), uid = d.uid)
+    assert d != Variable(range(10))
     assert d.size == 10
     with raises(ValueError):
         d.value = 11

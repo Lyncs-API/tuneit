@@ -73,6 +73,9 @@ class Variable(Object):
 
         assert isinstance(self._value, Value), "Value must be of Value type"
 
+        if self.uid is None:
+            self.uid = True
+
         super().__post_init__()
 
     @property
@@ -99,7 +102,7 @@ class Variable(Object):
         "Returns the value of the variable. If it is not fixed, the default value is returned."
         if self.fixed:
             return self._value.value
-        return self.default
+        return self.tunable()
 
     @value.setter
     def value(self, value):
@@ -112,12 +115,15 @@ class Variable(Object):
 
     def __iter__(self):
         yield self.var
-        yield self.value
+        if self.fixed:
+            yield self.value
 
     def __eq__(self, other):
         if isinstance(other, Variable):
             return super().__eq__(other)
-        return self.value == other
+        if self.fixed:
+            return self.value == other
+        return False
 
     @property
     def size(self):
@@ -141,14 +147,18 @@ class Variable(Object):
     def copy(self, reset=False, **kwargs):
         "Returns a copy of self"
         kwargs.setdefault("default", self.default)
-        kwargs.setdefault("_value", self._value if not reset else None)
+        if reset:
+            kwargs.setdefault("_value", None)
+            kwargs.setdefault("uid", True)
+        else:
+            kwargs.setdefault("_value", self._value)
         return super().copy(**kwargs)
 
     def __repr__(self):
         return "%s(%s%s)" % (
             type(self).__name__,
             self.var,
-            ", value=%s" % self.value if self.fixed else "",
+            (", value=%s" % str(self.value)) if self.fixed else "",
         )
 
 
