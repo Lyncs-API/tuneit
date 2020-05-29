@@ -11,7 +11,6 @@ __all__ = [
 ]
 
 from functools import partial, wraps
-from uuid import uuid4
 from .graph import Graph, Node, visualize
 from .tunable import Tunable, tunable, Function
 from .variable import Variable
@@ -23,7 +22,6 @@ class TunableClass:
 
     def __init__(self, value=None):
         self.value = value
-        self.uid = value
 
     @property
     def value(self):
@@ -52,20 +50,6 @@ class TunableClass:
     @property
     def __graph__(self):
         return self.value
-
-    @property
-    def uid(self):
-        "Unique id of the field"
-        return self._uid
-
-    @uid.setter
-    def uid(self, value):
-        if value is None:
-            self._uid = str(uuid4())
-        elif isinstance(value, TunableClass):
-            self._uid = value.uid
-        else:
-            self._uid = value
 
     def visualize(self, **kwargs):
         "Visualizes the class graph"
@@ -124,10 +108,9 @@ class tunable_property(property):
             var = super().__get__(obj, owner)
             if isinstance(var, Variable):
                 var.label = self.name
-                var.uid = var.uid or obj.uid
             else:
                 var = Variable(
-                    super().__get__(obj, owner), label=self.name, uid=obj.uid
+                    super().__get__(obj, owner), label=self.name
                 )
             setattr(obj, self.key, var)
             return self.__get__(obj, owner)
