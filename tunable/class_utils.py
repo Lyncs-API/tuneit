@@ -13,7 +13,7 @@ __all__ = [
 from functools import partial, wraps
 from uuid import uuid4
 from .graph import Graph, Node, visualize
-from .tunable import Tunable, function, tunable, compute, varname
+from .tunable import Tunable, tunable, Function
 from .variable import Variable
 from .finalize import finalize
 
@@ -73,7 +73,7 @@ class TunableClass:
 
     def compute(self, **kwargs):
         "Computes the class graph"
-        self.value = tunable(compute(self.value, **kwargs), label="value")
+        self.value = tunable(self.node.compute(**kwargs), label="value")
 
     @property
     def result(self):
@@ -123,9 +123,8 @@ class tunable_property(property):
         except AttributeError:
             var = super().__get__(obj, owner)
             if isinstance(var, Variable):
-                var.label = var.label or self.name
+                var.label = self.name
                 var.uid = var.uid or obj.uid
-                var = var.copy()
             else:
                 var = Variable(
                     super().__get__(obj, owner), label=self.name, uid=obj.uid
@@ -141,7 +140,6 @@ class tunable_property(property):
             setattr(obj, self.key, value)
         else:
             var.value = value
-            var.fixed = True
 
 
 def skip_n_args(fnc, num):
@@ -167,11 +165,11 @@ def derived_method(*deps):
         @wraps(fnc)
         def derived(self, *args, **kwargs):
             _deps = (dep.__get__(self, type(self)) for dep in deps)
-            _deps = tuple(dep.value for dep in _deps if isinstance(dep.value, Tunable))
-            if _deps:
-                return function(
-                    skip_n_args(fnc, len(_deps)), *_deps, self, *args, **kwargs
-                )
+            _deps = tuple(dep.value for dep in _deps)
+            if any((isinstance(dep, Tunable) for dep in _deps)):
+                return Function(
+                    fnc, deps=_deps, args=(self,) + args, kwargs=kwargs
+                ).tunable()
             return fnc(self, *args, **kwargs)
 
         return derived
@@ -206,10 +204,10 @@ class derived_property(property):
 
     def __get__(self, obj, owner):
         deps = (dep.__get__(obj, owner) for dep in self.deps)
-        deps = tuple(dep.value for dep in deps if isinstance(dep.value, Tunable))
-        if deps:
-            return function(self, obj, owner, *deps)
+        deps = tuple(dep.value for dep in deps)
+        if any((isinstance(dep, Tunable) for dep in deps)):
+            return Function(self, deps=deps, args=(obj,)).tunable()
         return super().__get__(obj, owner)
 
-    def __call__(self, obj, owner, *args, **kwargs):
-        return self.__get__(obj, owner)
+    def __call__(self, obj):
+        return self.__get__(obj, type(obj))
