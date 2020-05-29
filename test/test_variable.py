@@ -48,3 +48,13 @@ def test_variable():
     d = Permutation((1, 2, 3))
     d.value = (3, 2, 1)
     assert d.size == 6
+
+    d = Variable([0])
+    assert d.fixed
+    assert d.value == 0
+
+    with raises(ValueError):
+        d = Variable([])
+
+    d = Variable((i for i in [1,2,3]))
+    assert d.values == (1,2,3)

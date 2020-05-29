@@ -53,14 +53,24 @@ class Variable(Object):
         if not isinstance(self.var, Iterable):
             raise TypeError("The first argument of Variable must be iterable")
 
+        if not hasattr(self.var, "__len__"):
+            self.obj = tuple(self.obj)
+
         if self.default is None:
-            self.default = next(iter(self.values))
+            try:
+                self.default = next(iter(self.values))
+            except StopIteration:
+                raise ValueError("Given an empty range for the variable")
 
         if self.default not in self.values:
             raise ValueError("Default value not in variable's value")
 
         if self._value is None:
             self._value = Value()
+
+        if self.size < 2 and not self.fixed:
+            self.value = self.default
+
         assert isinstance(self._value, Value), "Value must be of Value type"
 
         super().__post_init__()
