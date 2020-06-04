@@ -109,9 +109,7 @@ class tunable_property(property):
             if isinstance(var, Variable):
                 var.label = self.name
             else:
-                var = Variable(
-                    super().__get__(obj, owner), label=self.name
-                )
+                var = Variable(super().__get__(obj, owner), label=self.name)
             setattr(obj, self.key, var)
             return self.__get__(obj, owner)
 
@@ -186,11 +184,12 @@ class derived_property(property):
         ), "TODO: improve check"
 
     def __get__(self, obj, owner):
+        if obj is None:
+            return self.fget
         deps = (dep.__get__(obj, owner) for dep in self.deps)
         deps = tuple(dep.value for dep in deps)
         if any((isinstance(dep, Tunable) for dep in deps)):
-            return Function(self, deps=deps, args=(obj,)).tunable()
+            return Function(
+                self.fget, deps=deps, args=(obj,), label=self.name
+            ).tunable()
         return super().__get__(obj, owner)
-
-    def __call__(self, obj):
-        return self.__get__(obj, type(obj))
