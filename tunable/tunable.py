@@ -149,8 +149,12 @@ class Object:
             key = key + md5(dumps(self.uid)).hexdigest()
         else:
             try:
-                key = key + md5(dumps(tuple(self))).hexdigest()
+                parts = tuple(
+                    Key(part) if isinstance(part, Key) else part for part in self
+                )
+                key = key + md5(dumps(parts)).hexdigest()
             except Exception as _:
+                print(_)
                 self.uid = str(uuid4())
                 return self.key
 
@@ -245,8 +249,8 @@ class Function(Object):
     def __compute__(self, **kwargs):
         # pylint: disable=W0108
         cmpt = lambda obj: compute(obj, **kwargs)
-        fnc = cmpt(self.fnc)
-        args = list(map(cmpt, self.args))
+        fnc = cmpt(super().__compute__(**kwargs))
+        args = tuple(map(cmpt, self.args))
         kwargs = dict(zip(self.kwargs.keys(), map(cmpt, self.kwargs.values())))
         res = fnc(*args, **kwargs)
         if res is None:
