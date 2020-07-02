@@ -284,6 +284,8 @@ class Function(Object):
                     "=..."
                     if label == "setattr"
                     else "(...)"
+                    if label == "callattr" and (len(self.args) > 2 or self.kwargs)
+                    else "()"
                     if label == "callattr"
                     else ""
                 )
