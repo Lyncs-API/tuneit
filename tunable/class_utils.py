@@ -8,12 +8,13 @@ __all__ = [
     "tunable_property",
     "derived_property",
     "derived_method",
+    "alternatives",
 ]
 
 from functools import partial, wraps
 from .graph import Graph, Node, visualize
 from .tunable import Tunable, tunable, Function
-from .variable import Variable
+from .variable import Variable, variable
 from .finalize import finalize
 
 
@@ -193,3 +194,65 @@ class derived_property(property):
                 self.fget, deps=deps, args=(obj,), label=self.name
             ).tunable()
         return super().__get__(obj, owner)
+
+
+class alternatives(dict):
+    """
+    Class for defining alternative implementations of a function
+
+    Usage
+    -----
+    @alternatives(fnc1, label = fnc2, other_label = fnc3)
+    def fnc(*args, **kwargs):
+        ...
+    """
+
+    @classmethod
+    def args_to_kwargs(cls, *args):
+        "Turns args into kwargs using as a key the arg name"
+
+        kwargs = {}
+        for arg in args:
+            if isinstance(arg, dict):
+                kwargs.update(arg)
+            elif hasattr(arg, "__name__"):
+                kwargs[arg.__name__] = arg
+            else:
+                raise ValueError(f"{arg} has no __name__")
+
+        return kwargs
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(**self.args_to_kwargs(*args), **kwargs)
+        self.default = next(iter(self))
+
+    @wraps(dict.update)
+    def update(self, *args, **kwargs):
+        super().update(**self.args_to_kwargs(*args), **kwargs)
+
+    @property
+    def default(self):
+        "The default value"
+        return self._default
+
+    @default.setter
+    def default(self, key):
+        if key not in self:
+            raise KeyError(f"{key} unknown alternative")
+        self._default = key
+        wraps(self[key])(self)
+        self.__name__ = key
+
+    def add(self, fnc):
+        "Adds a value to the alternatives"
+        kwargs = self.args_to_kwargs(fnc)
+        self.update(kwargs)
+        return next(iter(kwargs))
+
+    def __call__(self, *args, **kwargs):
+        if len(args) == 1 and callable(args[0]):
+            self.default = self.add(args[0])
+            return self
+        return variable(self.values(), default=self[self.default], label=self.__name__)(
+            *args, **kwargs
+        )
