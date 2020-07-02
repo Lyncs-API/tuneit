@@ -293,4 +293,6 @@ def default_graph(**kwargs):
             """
         )
 
+    kwargs.setdefault("graph_attr", {})
+    kwargs["graph_attr"].setdefault("rankdir", "LR")
     return Digraph(**kwargs)
