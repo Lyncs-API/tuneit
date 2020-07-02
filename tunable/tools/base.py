@@ -19,7 +19,7 @@ def init(tunable, variables):
 
     tunable = finalize(tunable).copy()
     variables = variables if variables is not None else tunable.tunable_variables
-    variables = tuple(tunable.get_variable(var).key for var in variables)
+    variables = tuple(str(tunable.get_variable(var).key) for var in variables)
 
     set_vars = set(variables)
     set_tunable = set(tunable.tunable_variables)

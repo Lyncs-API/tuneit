@@ -119,10 +119,14 @@ class Variable(Object):
             yield self.value
 
     def __eq__(self, other):
+        if self.fixed:
+            if isinstance(other, Variable):
+                if not other.fixed:
+                    return False
+                other = other.value
+            return self.value == other
         if isinstance(other, Variable):
             return super().__eq__(other)
-        if self.fixed:
-            return self.value == other
         return False
 
     @property
@@ -144,14 +148,17 @@ class Variable(Object):
     def __dot_attrs__(self):
         return dict(shape="diamond", color="green" if self.fixed else "red")
 
-    def copy(self, reset=False, **kwargs):
+    def copy(self, reset=False, reset_value=False, **kwargs):
         "Returns a copy of self"
         kwargs.setdefault("default", self.default)
-        if reset:
+        if reset or reset_value:
             kwargs.setdefault("_value", None)
-            kwargs.setdefault("uid", True)
         else:
             kwargs.setdefault("_value", self._value)
+        if reset:
+            kwargs.setdefault("uid", True)
+        else:
+            kwargs.setdefault("uid", self.uid)
         return super().copy(**kwargs)
 
     def __repr__(self):

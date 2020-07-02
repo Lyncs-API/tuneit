@@ -25,7 +25,7 @@ class HighLevel(Node):
     def variables(self):
         "List of dependencies that are a variable"
         return tuple(
-            dep for dep in self.dependencies if isinstance(self[dep], Variable)
+            str(dep) for dep in self.dependencies if isinstance(self[dep], Variable)
         )
 
     @property
@@ -70,10 +70,10 @@ class HighLevel(Node):
 
         if reset:
             for var in res.variables:
-                res[var] = res[var].copy(reset=True)
+                res[var] = res[var].copy(reset_value=True)
         elif reset_tunable:
             for var in res.tunable_variables:
-                res[var] = res[var].copy(reset=True)
+                res[var] = res[var].copy(reset_value=True)
 
         return res
 
