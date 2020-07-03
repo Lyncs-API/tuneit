@@ -9,20 +9,36 @@ __all__ = [
 
 import operator
 import random
-from tabulate import tabulate
 from functools import reduce
 from itertools import product
+from tabulate import tabulate
 from ..finalize import finalize
 
 
 class Sampler:
     "Base class for sampling values of a tunable object"
-    
-    def __init__(self, tunable, variables=None, n_samples=None, **kwargs):
+
+    def __init__(
+        self,
+        tunable,
+        variables=None,
+        n_samples=None,
+        callback=None,
+        callback_calls=False,
+        label=None,
+        **kwargs,
+    ):
         "Initializes the tunable object and the variables"
 
         self.tunable = finalize(tunable).copy()
         self.compute_kwargs = kwargs
+
+        if callback:
+            self.callback = callback
+        self.callback_calls = callback_calls
+
+        if label:
+            self.label = label
 
         if variables:
             self.variables = tuple(
@@ -77,7 +93,7 @@ class Sampler:
             return tuple(values)
 
         idxs = sorted(random.sample(range(self.max_samples), self.n_samples))
-        
+
         return tuple(
             val for idx, val in filter(lambda _: _[0] in idxs, enumerate(values))
         )
@@ -86,30 +102,54 @@ class Sampler:
         "Returns the sampled values"
         return list(self)
 
+    @property
+    def callback(self):
+        return getattr(self, "_callback", lambda _: _)
+
+    @callback.setter
+    def callback(self, value):
+        "Function to be called on the result"
+        if not callable(value):
+            raise TypeError("callback must be a callable")
+        self._callback = value
+
     def __iter__(self):
-        for sample in self.samples:
+        for params in self.samples:
             tmp = self.tunable.copy()
-            for var, val in zip(self.variables, sample):
+            for var, val in zip(self.variables, params):
                 tmp.fix(var, val)
             try:
-                result = tmp.compute(**self.compute_kwargs)
+                if self.callback_calls:
+                    result = self.callback(lambda: tmp.compute(**self.compute_kwargs))
+                else:
+                    result = self.callback(tmp.compute(**self.compute_kwargs))
             except Exception as err:
                 result = err
-            yield sample, result
+            yield params, result
+
+    @property
+    def label(self):
+        "Label used for the result"
+        return getattr(self, "_label", self.tunable.label)
+
+    @label.setter
+    def label(self, value):
+        self._label = str(value)
 
     @property
     def headers(self):
-        return tuple(self.tunable[var].label for var in self.variables) + (self.tunable.label,)
-            
+        "Headers for the values returned by the sampler"
+        return tuple(self.tunable[var].label for var in self.variables) + (self.label,)
+
     def tabulate(self, **kwargs):
+        "Returns a table of the values"
         kwargs.setdefault("headers", self.headers)
-        return tabulate(
-            (sample+(result,) for sample, result in self), **kwargs
-        )
+        return tabulate((params + (repr(result),) for params, result in self), **kwargs)
 
     def _repr_html_(self):
-        return self.tabulate(tablefmt='html')
-    
+        return self.tabulate(tablefmt="html")
+
+
 def sample(tunable, *variables, samples=100, **kwargs):
     """
     Samples the value of the tunable object
