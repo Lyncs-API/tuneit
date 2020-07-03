@@ -2,7 +2,9 @@ from setuptools import find_packages
 from setuptools import setup
 
 requirements = [
+    "dill",
     "python-varname",
+    "tabulate",
 ]
 
 extras = {"graph": ["graphviz",]}

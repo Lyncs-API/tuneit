@@ -16,7 +16,7 @@ from inspect import ismethod
 from collections import deque
 from collections.abc import Iterable
 from hashlib import md5
-from pickle import dumps
+from dill import dumps
 from uuid import uuid4
 from dataclasses import dataclass
 from typing import Any
