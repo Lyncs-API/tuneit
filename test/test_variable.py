@@ -30,7 +30,7 @@ def test_variable():
         variable(range(10), default=11)
 
     d = Variable(range(10))
-    assert d == Variable(range(10), uid = d.uid)
+    assert d == Variable(range(10), uid=d.uid)
     assert d != Variable(range(10))
     assert d.size == 10
     with raises(ValueError):
@@ -56,5 +56,5 @@ def test_variable():
     with raises(ValueError):
         d = Variable([])
 
-    d = Variable((i for i in [1,2,3]))
-    assert d.values == (1,2,3)
+    d = Variable((i for i in [1, 2, 3]))
+    assert d.values == (1, 2, 3)

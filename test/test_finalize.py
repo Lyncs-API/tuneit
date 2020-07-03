@@ -13,7 +13,7 @@ def test_finalize():
     a = variable(range(10), default=2)
 
     assert finalize(a)[finalize(a).value] == finalize(a).value
-    
+
     c = variable(range(10))
     b = finalize(a * a + c)
 
@@ -47,4 +47,4 @@ def test_finalize():
 
     a = variable(range(10), uid=True)
     with raises(KeyError):
-        finalize(a*b).fix("a")
+        finalize(a * b).fix("a")
