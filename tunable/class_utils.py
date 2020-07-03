@@ -13,7 +13,7 @@ __all__ = [
 
 from functools import partial, wraps
 from .graph import Graph, Node, visualize
-from .tunable import Tunable, tunable, Function
+from .tunable import Tunable, tunable, Function, function
 from .variable import Variable, variable
 from .finalize import finalize
 
@@ -249,10 +249,17 @@ class alternatives(dict):
         self.update(kwargs)
         return next(iter(kwargs))
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, _key=None, **kwargs):
         if len(args) == 1 and callable(args[0]):
             self.default = self.add(args[0])
             return self
-        return variable(self.values(), default=self[self.default], label=self.__name__)(
-            *args, **kwargs
+
+        if _key:
+            return self[_key](*args, **kwargs)
+
+        return function(
+            self,
+            *args,
+            _key=variable(self.keys(), default=self.default, label=self.__name__),
+            **kwargs,
         )
