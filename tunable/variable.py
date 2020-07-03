@@ -91,7 +91,7 @@ class Variable(Object):
             value = self.default
         if isinstance(value, Variable):
             value = value.tunable()
-        if isinstance(value, Iterable):
+        if isinstance(value, Iterable) and not isinstance(value, str):
             value = tuple(value)
         if not isinstance(value, Tunable) and value not in self.values:
             raise ValueError("Value %s not compatible with variable" % (value,))
