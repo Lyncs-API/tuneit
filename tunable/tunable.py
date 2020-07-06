@@ -203,6 +203,7 @@ class Function(Object):
     kwargs: dict = None
 
     labels = {
+        "call": "(...)",
         "add": "+",
         "sub": "-",
         "mul": "*",
