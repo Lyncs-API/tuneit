@@ -1,8 +1,8 @@
-from tunable.graph import visualize
-from tunable.tunable import *
-from tunable.variable import *
-from tunable.tunable import Tunable
-from tunable.finalize import finalize
+from tuneit.graph import visualize
+from tuneit.tunable import *
+from tuneit.variable import *
+from tuneit.tunable import Tunable
+from tuneit.finalize import finalize
 from pytest import raises
 
 

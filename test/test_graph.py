@@ -1,5 +1,5 @@
 import pytest
-from tunable.graph import Graph, Node, Key
+from tuneit.graph import Graph, Node, Key
 
 
 class String(str):

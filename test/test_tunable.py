@@ -1,6 +1,6 @@
-from tunable.graph import visualize, Node
-from tunable.tunable import *
-from tunable.tunable import Tunable
+from tuneit.graph import visualize, Node
+from tuneit.tunable import *
+from tuneit.tunable import Tunable
 from pytest import raises
 
 
