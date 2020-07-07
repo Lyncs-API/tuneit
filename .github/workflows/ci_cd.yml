@@ -51,6 +51,7 @@ jobs:
 
     - name: Run tests
       run: |
+        pip install tunable[all]
         pip install pytest
         pip install pytest-cov
         pytest -v --cov=tunable --cov-report=xml test*

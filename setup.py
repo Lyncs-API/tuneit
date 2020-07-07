@@ -1,13 +1,16 @@
-from setuptools import find_packages
-from setuptools import setup
+from setuptools import find_packages, setup
+from functools import reduce
 
 requirements = [
     "dill",
     "python-varname",
     "tabulate",
+    "numpy",
 ]
 
 extras = {"graph": ["graphviz",]}
+
+extras["all"] = list(set(reduce(lambda a, b: a + b, extras.values())))
 
 setup(
     name="tunable",
