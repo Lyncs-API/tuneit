@@ -1,8 +1,8 @@
-[![python](https://img.shields.io/pypi/pyversions/tuneit.svg)](https://pypi.org/project/tuneit/)
-[![pypi](https://img.shields.io/pypi/v/tuneit.svg)](https://pypi.org/project/tuneit/)
-[![license](https://img.shields.io/github/license/sbacchio/tuneit)](https://github.com/sbacchio/tuneit/blob/master/LICENSE)
-[![build & test](https://github.com/sbacchio/tuneit/workflows/build%20&%20test/badge.svg)](https://github.com/sbacchio/tuneit/actions)
-[![codecov](https://codecov.io/gh/sbacchio/tuneit/branch/master/graph/badge.svg)](https://codecov.io/gh/sbacchio/tuneit)
+[![python](https://img.shields.io/pypi/pyversions/tuneit.svg?logo=python)](https://pypi.org/project/tuneit/)
+[![pypi](https://img.shields.io/pypi/v/tuneit.svg?logo=python)](https://pypi.org/project/tuneit/)
+[![license](https://img.shields.io/github/license/sbacchio/tuneit?logo=github)](https://github.com/sbacchio/tuneit/blob/master/LICENSE)
+[![build & test](https://img.shields.io/github/workflow/status/sbacchio/tuneit/build%20&%20test?logo=github)](https://github.com/sbacchio/tuneit/actions)
+[![codecov](https://img.shields.io/codecov/c/github/sbacchio/tuneit?logo=codecov)](https://codecov.io/gh/sbacchio/tuneit)
 
 # Tuneit
 
