@@ -39,11 +39,11 @@ jobs:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.test_pypi_password }}
       run: |
-        pip install --extra-index-url https://test.pypi.org/simple/ tunable==$(python -m .github/get_version setup.py) || (
+        pip install --extra-index-url https://test.pypi.org/simple/ tunable==$(python -m get_version setup.py) || (
           python setup.py sdist
           twine upload --repository-url https://test.pypi.org/legacy/ dist/*
           count=0
-          while ! pip install --extra-index-url https://test.pypi.org/simple/ tunable==$(python -m .github/get_version setup.py) && [ $count -lt 20 ]; do
+          while ! pip install --extra-index-url https://test.pypi.org/simple/ tunable==$(python -m get_version setup.py) && [ $count -lt 20 ]; do
             sleep 1
             count=$((count+1))
           done
@@ -51,7 +51,7 @@ jobs:
 
     - name: Run tests
       run: |
-        pip install --extra-index-url https://test.pypi.org/simple/ tunable[all]
+        pip install --extra-index-url https://test.pypi.org/simple/ tunable[all]==$(python -m get_version setup.py)
         pip install pytest
         pip install pytest-cov
         pytest -v --cov=tunable --cov-report=xml test*
