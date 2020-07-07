@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/sbacchio/tuneit/branch/master/graph/badge.svg)](https://codecov.io/gh/sbacchio/tuneit)
+
 # Tuneit
 
 ## A Python tool for tuning, benchmarking and crosschecking calculations
