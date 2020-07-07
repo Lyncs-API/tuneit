@@ -3,6 +3,7 @@ from functools import reduce
 
 requirements = [
     "dill",
+    "dataclasses",
     "python-varname",
     "tabulate",
     "numpy",
@@ -18,7 +19,7 @@ setup(
     author_email="s.bacchio@gmail.com",
     url="https://tunable.readthedocs.io/en/latest",
     download_url="https://github.com/sbacchio/tunable",
-    version="0.0.1",
+    version="0.0.2",
     packages=find_packages(),
     install_requires=requirements,
     extras_require=extras,
