@@ -13,6 +13,16 @@ extras = {"graph": ["graphviz",]}
 
 extras["all"] = list(set(reduce(lambda a, b: a + b, extras.values())))
 
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
 setup(
     name="tuneit",
     author="Simone Bacchio",
@@ -23,4 +33,8 @@ setup(
     packages=find_packages(),
     install_requires=requirements,
     extras_require=extras,
+    description="Tune, benchmark and crosscheck calculations contructing a computational graph",
+    long_description=str(open("README.md").read()),
+    long_description_content_type="text/markdown",
+    classifiers=classifiers,
 )
