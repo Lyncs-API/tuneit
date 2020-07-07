@@ -18,7 +18,7 @@ setup(
     author_email="s.bacchio@gmail.com",
     url="https://tunable.readthedocs.io/en/latest",
     download_url="https://github.com/sbacchio/tunable",
-    version="0.0.0",
+    version="0.0.1",
     packages=find_packages(),
     install_requires=requirements,
     extras_require=extras,
