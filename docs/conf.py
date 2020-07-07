@@ -17,13 +17,13 @@
 
 # -- Project information -----------------------------------------------------
 
-project = "Tunable"
+project = "Tuneit"
 copyright = "2020, Simone Bacchio"
 author = "Simone Bacchio"
 
 # The full version, including alpha/beta/rc tags
 release = "0.0.0"
-
+master_doc = "index"
 
 # -- General configuration ---------------------------------------------------
 

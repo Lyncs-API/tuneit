@@ -1,6 +1,6 @@
 .. Tunable documentation master file.
 
-Welcome to Tunable's documentation!
+Welcome to Tuneit's documentation!
 ===================================
 
 .. toctree::
