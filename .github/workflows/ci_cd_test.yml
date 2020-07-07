@@ -49,7 +49,5 @@ jobs:
         pip install --extra-index-url https://test.pypi.org/simple/ tuneit[all]==$(python -m get_version setup.py)
         pip install pytest
         pip install pytest-cov
-        pytest -v --cov=tuneit --cov-report=xml test*
-        #export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
-        #bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n tuneit
+        pytest -v
 
