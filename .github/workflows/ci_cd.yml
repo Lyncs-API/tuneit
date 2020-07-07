@@ -1,6 +1,6 @@
 # This workflow updates the packages on PyPI
 
-name: Build & test
+name: build & test
 
 on:
   push:

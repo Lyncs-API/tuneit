@@ -20,8 +20,12 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
     "Natural Language :: English",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
 ]
 
 setup(
@@ -31,11 +35,11 @@ setup(
     url="https://tuneit.readthedocs.io/en/latest",
     download_url="https://github.com/sbacchio/tuneit",
     version="0.0.3",
-    license='BSD',
+    license="BSD-3-Clause",
     packages=find_packages(),
     install_requires=requirements,
     extras_require=extras,
-    python_requires='>=3',
+    python_requires=">=3",
     description="Tune, benchmark and crosscheck calculations contructing a computational graph",
     long_description=str(open("README.md").read()),
     long_description_content_type="text/markdown",
