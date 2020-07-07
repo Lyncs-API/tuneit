@@ -1,6 +1,6 @@
-# This workflow updates the lyncs packages on PyPI test if version is changed
+# This workflow updates the packages on PyPI
 
-name: Lyncs upload to PyPI test
+name: Build & test
 
 on:
   push:

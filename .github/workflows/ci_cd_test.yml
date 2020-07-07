@@ -1,6 +1,6 @@
-# This workflow updates the lyncs packages on PyPI test if version is changed
+# This workflow builds and tests PRs
 
-name: Lyncs upload to PyPI test
+name: PR build & test
 
 on:
   pull_request:
