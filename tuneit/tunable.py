@@ -57,7 +57,7 @@ def compute(obj, **kwargs):
 def tunable(obj, deps=None, label=None, uid=None):
     """
     A tunable object.
-    
+
     Parameters
     ----------
     obj: Any
@@ -182,7 +182,7 @@ class Object:
 def function(fnc, *args, **kwargs):
     """
     A tunable function call.
-    
+
     Parameters
     ----------
     fnc: callable
