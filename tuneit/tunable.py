@@ -20,20 +20,16 @@ from dill import dumps
 from uuid import uuid4
 from dataclasses import dataclass
 from typing import Any
-from varname import varname as _varname
-
+from varname import varname as _varname, VarnameRetrievingError
 from .graph import Graph, Node, Key
 
 
 def varname(caller=1, default=None):
     "Wrapper of varname.varname that silences the warning and returns a default value if given."
-    warnings.filterwarnings("error" if default is not None else "ignore")
     try:
         return _varname(caller + 1)
-    except Warning:
+    except VarnameRetrievingError:
         return default
-    finally:
-        warnings.filterwarnings("default")
 
 
 def compute(obj, **kwargs):
@@ -57,7 +53,7 @@ def compute(obj, **kwargs):
 def tunable(obj, deps=None, label=None, uid=None):
     """
     A tunable object.
-    
+
     Parameters
     ----------
     obj: Any
@@ -154,7 +150,6 @@ class Object:
                 )
                 key = key + md5(dumps(parts)).hexdigest()
             except Exception as _:
-                print(_)
                 self.uid = str(uuid4())
                 return self.key
 
@@ -179,10 +174,14 @@ class Object:
         return dict(shape="rect")
 
 
+Object.__eq2__ = Object.__eq__
+Object.__eq__ = lambda self, value: self.obj == value or self.__eq2__(value)
+
+
 def function(fnc, *args, **kwargs):
     """
     A tunable function call.
-    
+
     Parameters
     ----------
     fnc: callable
