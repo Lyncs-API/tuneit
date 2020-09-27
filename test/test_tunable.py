@@ -1,7 +1,8 @@
+from pickle import dumps
+from pytest import raises
 from tuneit.graph import visualize, Node
 from tuneit.tunable import *
 from tuneit.tunable import Tunable
-from pytest import raises
 
 
 class unpickable:
@@ -85,3 +86,5 @@ def test_tunable():
 
     with raises(TypeError):
         bool(tunable(1))
+
+    assert dumps(a)

@@ -13,9 +13,6 @@ jobs:
   build-n-publish:  
     runs-on: ubuntu-latest
 
-    strategy:
-      max-parallel: 1
-
     steps:
     - uses: actions/checkout@v2
 
@@ -27,29 +24,58 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
         
-    - name: Install and upload if not up to date
+    - name: Install from source
+      run: |
+        pip install -e .[all]
+
+    - name: Run tests
+      run: |
+        pytest -v --cov-report=xml
+        export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
+        bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n tuneit
+
+    - name: Upload if not up to date
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.pypi_password }}
       run: |
-        pip install tuneit==$(python -m get_version setup.py) || (
+        pip uninstall -y tuneit
+        pip install tuneit==$(lyncs_setuptools version) || (
+          pip install twine
           python setup.py sdist
           twine upload dist/*
           count=0
-          while ! pip install tuneit==$(python -m get_version setup.py) && [ $count -lt 20 ]; do
+          while ! pip install tuneit==$(lyncs_setuptools version) && [ $count -lt 20 ]; do
             sleep 1
             count=$((count+1))
           done
         )
 
+  clean-run:
+    
+    needs: build-n-publish
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+    - uses: actions/checkout@v2
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+
+    - name: Install via pip
+      run: |
+        pip install tuneit[all]
+        
     - name: Run tests
       run: |
-        pip install tuneit[all]==$(python -m get_version setup.py)
-        pip install pytest
-        pip install pytest-cov
-        pytest -v --cov=tuneit --cov-report=xml
-        export CODECOV_TOKEN="${{ secrets.CODECOV_TOKEN }}"
-        bash <(curl -s https://codecov.io/bash) -f ./coverage.xml -n tuneit
-
+        pytest -v --import-mode=importlib
