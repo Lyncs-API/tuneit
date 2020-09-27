@@ -24,7 +24,7 @@ def crosscheck(
 ):
     """
     Crosscheck the result of tunable against the reference.
-    
+
     Parameters
     ----------
     comparison: callable (default = numpy.allclose)

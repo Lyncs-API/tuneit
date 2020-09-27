@@ -8,7 +8,7 @@ __all__ = [
 
 class Slot:
     """
-    An holder of the slot value. 
+    An holder of the slot value.
     Needed for passing by reference the slots between views of the class.
     """
 
@@ -38,13 +38,13 @@ class CastableType(type):
     A metaclass for castable classes.
 
     >>> from tunable.meta import CastableType
-    
+
     >>> class Foo(metaclass=CastableType, attrs=["foo"]):
     ...     pass
-    
+
     >>> class Bar(Foo, attrs=["bar"], bind=False):
     ...     pass
-    
+
     >>> Bar.__attrs__
         ["Foo_foo", "Bar_bar"]
     >>> issubclass(Bar, Foo)
@@ -55,13 +55,13 @@ class CastableType(type):
 
     **Note**: since we initialized Bar with bind=False
     it has not inherit the methods from the parent class.
-    
+
     To access the methods of the parent class one
     needs to cast the instance to the parent class.
-    
+
     >>> foo = Foo(bar)
     >>> hasattr(foo, "foo")
-        True    
+        True
     """
 
     @classmethod

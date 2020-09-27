@@ -153,7 +153,7 @@ class Sampler:
 def sample(tunable, *variables, samples=100, **kwargs):
     """
     Samples the value of the tunable object
-    
+
     Parameters
     ----------
     variables: list of str
