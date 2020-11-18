@@ -1,7 +1,6 @@
 """
 Function for checking the results
 """
-# pylint: disable=C0303,C0330
 
 import operator
 from numpy import allclose
