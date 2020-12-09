@@ -26,7 +26,7 @@ class Time(float):
 
 
 def default_timer(fnc, number=100):
-    return timeit(fnc, number=100) / number
+    return timeit(fnc, number=number) / number
 
 
 def benchmark(
