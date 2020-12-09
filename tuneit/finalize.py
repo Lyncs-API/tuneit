@@ -77,8 +77,14 @@ class HighLevel(Node):
             raise ValueError("args not supported, please pass them as kwargs")
 
         tmp = self.copy()
+
         for key, val in kwargs.items():
-            tmp.get_data(key).set(val)
+            try:
+                tmp.get_data(key).set(val)
+                continue
+            except KeyError:
+                pass
+            tmp.fix(key, val)
 
         compute_kwargs = compute_kwargs or {}
         return tmp.compute(**compute_kwargs)
