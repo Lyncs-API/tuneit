@@ -110,12 +110,15 @@ class Node(Graph, Key, bind=False):
     """
 
     def __init__(self, key, value=None):
-        Graph.__init__(self.graph, join_graphs(value))
+        if isinstance(key, Graph):
+            Graph.__init__(self.graph, join_graphs(key))
+        else:
+            Graph.__init__(self.graph, join_graphs(value))
         Key.__init__(self.key, key)
 
         if key not in self.graph:
             self.graph[key] = value
-        elif not isinstance(value, Graph) or self == value:
+        elif value and (not isinstance(value, Graph) or self == value):
             raise KeyError("%s already in graph and the value will not be changed")
 
         for part in self:
