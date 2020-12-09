@@ -26,6 +26,7 @@ class Sampler:
         callback=None,
         callback_calls=False,
         label=None,
+        store_value=False,
         **kwargs,
     ):
         "Initializes the tunable object and the variables"
@@ -61,6 +62,8 @@ class Sampler:
 
         if n_samples:
             self.n_samples = n_samples
+
+        self.store_value = store_value
 
     @property
     def max_samples(self):
@@ -120,12 +123,24 @@ class Sampler:
                 tmp.fix(var, val)
             try:
                 if self.callback_calls:
-                    result = self.callback(lambda: tmp.compute(**self.compute_kwargs))
+                    result = self.callback(lambda: self._perform_call(tmp))
                 else:
-                    result = self.callback(tmp.compute(**self.compute_kwargs))
+                    result = self.callback(self._perform_call(tmp))
             except Exception as err:
                 result = err
             yield params, result
+
+    def _perform_call(self, graph):
+        value = graph.compute(**self.compute_kwargs)
+        if self.store_value:
+            self._value = value
+        return value
+
+    @property
+    def value(self):
+        if not hasattr(self, "_value") or not self.store_value:
+            return self._perform_call(tunable.copy())
+        return self._value
 
     @property
     def label(self):
