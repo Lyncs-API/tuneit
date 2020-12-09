@@ -6,6 +6,7 @@ __all__ = [
     "Tunable",
     "tunable",
     "Object",
+    "data",
     "function",
     "Function",
 ]
@@ -131,6 +132,11 @@ class Object:
 
     def copy(self, **kwargs):
         "Returns a copy of self"
+        # TODO: improve copy.. it should copy automatically all the data
+        # tmp = copy(self)
+        # for key, val in kwargs.items():
+        #   setattr(tmp, key, val)
+        # return tmp
         kwargs.setdefault("deps", self.deps)
         kwargs.setdefault("label", self.label)
         kwargs.setdefault("uid", self.uid)
@@ -176,6 +182,38 @@ class Object:
 
 Object.__eq2__ = Object.__eq__
 Object.__eq__ = lambda self, value: self.obj == value or self.__eq2__(value)
+
+
+def data(label, value=None, **kwargs):
+    """
+    A tunable function call.
+
+    Parameters
+    ----------
+    label: str
+
+    """
+    return Data(value, label=label, **kwargs).tunable()
+
+
+@dataclass
+class Data(Object):
+    "A data input of the graph"
+
+    check: callable = None
+    info: callable = None
+
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("check", self.check)
+        kwargs.setdefault("info", self.info)
+        return super().copy(**kwargs)
+
+    def set(self, val):
+        if self.check:
+            if not self.check(val):
+                raise ValueError("Check did not return True")
+        self.obj = val
 
 
 def function(fnc, *args, **kwargs):

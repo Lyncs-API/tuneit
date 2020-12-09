@@ -8,7 +8,7 @@ __all__ = [
 
 from .graph import Node, Key
 from .variable import Variable
-from .tunable import Object, Function, compute
+from .tunable import Object, Function, compute, Data
 
 
 def finalize(tunable):
@@ -20,6 +20,13 @@ def finalize(tunable):
 
 class HighLevel(Node):
     "HighLevel view of a Node"
+
+    @property
+    def datas(self):
+        "List of dependencies that are a variable"
+        return tuple(
+            str(dep) for dep in self.dependencies if isinstance(self[dep], Data)
+        )
 
     @property
     def variables(self):
@@ -64,6 +71,18 @@ class HighLevel(Node):
     def __copy__(self):
         return HighLevel(super().__copy__())
 
+    def __call__(self, *args, compute_kwargs=None, **kwargs):
+        "kwargs are data input of the graph"
+        if args:
+            raise ValueError("args not supported, please pass them as kwargs")
+
+        tmp = self.copy()
+        for key, val in kwargs.items():
+            tmp.get_data(key).set(val)
+
+        compute_kwargs = compute_kwargs or {}
+        return tmp.compute(**compute_kwargs)
+
     def copy(self, reset=False, reset_tunable=True):
         "Copy the content of the graph unrelating the tunable variables"
         res = self.__copy__()
@@ -98,6 +117,24 @@ class HighLevel(Node):
             variable = matches[0]
 
         return self[variable]
+
+    def get_data(self, data):
+        "Returns the varible corresponding to var"
+        if isinstance(data, Data):
+            data = data.key
+        if isinstance(data, Key):
+            data = Key(data).key
+
+        if not data in self.datas:
+            # Smart search
+            matches = list(filter(lambda var: var.startswith(data + "-"), self.datas))
+            if len(matches) > 1:
+                raise KeyError("More than one data matched to %s: %s" % (data, matches))
+            if len(matches) == 0:
+                raise KeyError("%s is not a data of %s" % (data, self))
+            data = matches[0]
+
+        return self[data]
 
     def fix(self, variable, value=None):
         "Fixes the value of the variable"
