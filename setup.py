@@ -13,6 +13,7 @@ extras = {
         "graphviz",
     ],
     "test": ["pytest", "pytest-cov"],
+    "optuna": ["optuna"],
 }
 
 setup(
