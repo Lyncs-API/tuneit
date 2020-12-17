@@ -2,10 +2,13 @@ __all__ = [
     "tune",
 ]
 
-# import optuna
-# from optuna.trial import Trial
 from .base import Sampler
 from ..finalize import HighLevel
+
+try:
+    from .OptunaSampler import OptunaSampler
+except ImportError:
+    OptunaSampler = None
 
 
 class Tuner(HighLevel, attrs=["tuner_kwargs"]):
@@ -14,19 +17,16 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
         super().__init__(tunable)
         self.tuner_kwargs = kwargs
 
-    def _compute(self, graph):
-        # fix parameters getting suggestions from sampler
-        # compute within callback
-        # give parameters and call back values to a fnc
-        return value
-
     def compute(self, **kwargs):
-        graph_manager = self.divide_graph()
-        for subgraph in graph_manager:
-            value = self._compute(subgraph)
-            graph_manager.store(subgraph, value)
-
+        # graph_manager = self.divide_graph()
+        # for subgraph in graph_manager:
+        #     value = self.get_sampler()(subgraph,**self.get_sampler_kwargs()).compute(**kwargs)
+        #     graph_manager.store(subgraph, value)
+        value = self.get_sampler()(self, **self.get_sampler_kwargs()).compute(**kwargs)
         return value
+
+    def get_best_trial(self):
+        return self.get_sampler()(self, **self.get_sampler_kwargs()).best_params()
 
     def get_sampler(self):
         sampler = self.tuner_kwargs.get("sampler", None)
@@ -36,8 +36,19 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
             "Optuna",
             "optuna",
         ]:
+            if OptunaSampler is None:
+                raise ImportError("Optuna not installed")
             return OptunaSampler
         raise ValueError(f"Unknown tuner {tuner}")
+
+    def get_sampler_kwargs(self):
+        sampler_kwargs = {}
+        if self.get_sampler() is OptunaSampler:
+            sampler_kwargs = {
+                "callback": self.tuner_kwargs.get("callback", None),
+                "storage": "sqlite:///example.db",
+            }
+        return sampler_kwargs
 
 
 def tune(tunable, **kwargs):
