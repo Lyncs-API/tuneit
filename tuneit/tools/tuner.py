@@ -6,7 +6,7 @@ from .base import Sampler
 from ..finalize import HighLevel
 
 try:
-    from .OptunaSampler import OptunaSampler
+    from .optuna import OptunaSampler
 except ImportError:
     OptunaSampler = None
 
@@ -39,7 +39,7 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
             if OptunaSampler is None:
                 raise ImportError("Optuna not installed")
             return OptunaSampler
-        raise ValueError(f"Unknown tuner {tuner}")
+        raise ValueError(f"Unknown sampler {sampler}")
 
     def get_sampler_kwargs(self):
         sampler_kwargs = {}
