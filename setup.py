@@ -6,6 +6,7 @@ requirements = [
     "varname",
     "tabulate",
     "numpy",
+    "lyncs_utils",
 ]
 
 extras = {

@@ -13,6 +13,7 @@ from functools import reduce
 from itertools import product
 from tabulate import tabulate
 from ..finalize import finalize
+from lyncs_utils import isiterable
 
 
 class Sampler:
@@ -42,8 +43,12 @@ class Sampler:
             self.label = label
 
         if variables:
+            if isinstance(variables, str):
+                variables = [variables]
+            elif not isiterable(variables):
+                variables = [variables]
             self.variables = tuple(
-                str(tunable.get_variable(var).key) for var in variables
+                str(self.tunable.get_variable(var).key) for var in variables
             )
 
             set_vars = set(self.variables)
@@ -139,7 +144,7 @@ class Sampler:
     @property
     def value(self):
         if not hasattr(self, "_value") or not self.store_value:
-            return self._perform_call(tunable.copy())
+            return self._perform_call(self.tunable.copy())
         return self._value
 
     @property
@@ -165,7 +170,7 @@ class Sampler:
         return self.tabulate(tablefmt="html")
 
 
-def sample(tunable, *variables, samples=100, **kwargs):
+def sample(tunable, variables=None, samples=100, **kwargs):
     """
     Samples the value of the tunable object
 

@@ -14,7 +14,7 @@ __all__ = [
 
 def crosscheck(
     tunable,
-    *variables,
+    variables=None,
     comparison=allclose,
     samples=None,
     reference=None,
@@ -43,7 +43,7 @@ def crosscheck(
 
     return sample(
         tunable,
-        *variables,
+        variables=variables,
         callback=lambda res: comparison(reference, res),
         samples=samples,
         label=label,

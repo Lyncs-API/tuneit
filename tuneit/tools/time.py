@@ -34,7 +34,7 @@ def default_timer(fnc, number=1):
 
 def benchmark(
     tunable,
-    *variables,
+    variables=None,
     timer=default_timer,
     timer_kwargs=None,
     samples=None,
@@ -64,7 +64,7 @@ def benchmark(
 
     return sample(
         tunable,
-        *variables,
+        variables=variables,
         callback=lambda fnc: Time(timer(fnc, **(timer_kwargs or {}))),
         callback_calls=True,
         samples=samples,
