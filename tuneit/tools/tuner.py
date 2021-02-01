@@ -18,6 +18,7 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
         self.tuner_kwargs = kwargs
 
     def compute(self, **kwargs):
+        "Calls a sampler to tune the whole graph"
         # graph_manager = self.divide_graph()
         # for subgraph in graph_manager:
         #     value = self.get_sampler()(subgraph,**self.get_sampler_kwargs()).compute(**kwargs)
@@ -26,9 +27,11 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
         return value
 
     def get_best_trial(self):
+        "Returns the best options for the variables of the graph after it has been tuned"
         return self.get_sampler()(self, **self.get_sampler_kwargs()).best_params()
 
     def get_sampler(self):
+        "Returns the name of the appropriate sampler class to be called based on the sampler argument in kwargs"
         sampler = self.tuner_kwargs.get("sampler", None)
         if not sampler:
             return Sampler
@@ -42,6 +45,7 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
         raise ValueError(f"Unknown sampler {sampler}")
 
     def get_sampler_kwargs(self):
+        "Returns the appropriate arguments for the selected sampler"
         sampler_kwargs = {}
         if self.get_sampler() is OptunaSampler:
             sampler_kwargs = {
