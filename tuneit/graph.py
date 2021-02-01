@@ -199,6 +199,8 @@ class Node(Graph, Key, bind=False):
             if isinstance(val, Key):
                 yield Key(val)
 
+    direct_dependencies = first_dependencies
+
     @property
     def dependencies(self):
         "Iterates over the dependencies"
@@ -242,7 +244,7 @@ def join_graphs(graphs):
     return Graph()
 
 
-def visualize(graph, start=None, end=None, **kwargs):
+def visualize(graph, start=None, end=None, groups=None, **kwargs):
     "Visualizes the graph returning a dot graph"
     assert isinstance(graph, Graph), "graph must be of type Graph"
 
@@ -279,6 +281,19 @@ def visualize(graph, start=None, end=None, **kwargs):
             if start and start not in graph[dep].dependencies:
                 continue
             dot.edge(str(dep), str(key))
+
+    if groups is not None:
+        for (i, group) in enumerate(groups):
+            with dot.subgraph(name=f"cluster_{i}") as c:
+                c.attr(color="blue")
+                c.node_attr.update(style="filled", color="white")
+                # for n in group:
+                #    node = graph[n]
+                #    deps = [str(dep) for dep in node.first_dependencies if isinstance(graph.get_item_(dep),Variable)]
+                #    c.edges([(n, dep) for dep in deps])
+                for n in group:
+                    node = graph[n]
+                    c.node(n, node.label, **node.dot_attrs)
 
     return dot
 
