@@ -6,6 +6,7 @@ from dill import dumps
 
 
 class OptunaSampler:
+    "Creates a sampler using the optuna package"
 
     optuna_types = {
         "discrete_uniform": Trial.suggest_discrete_uniform,
@@ -17,6 +18,23 @@ class OptunaSampler:
     }
 
     def __init__(self, tunable, callback=None, storage=None, n_trials=None, **kwargs):
+        """
+        Initialises the parameters of the class:
+
+        Parameters
+        ----------
+        tunable: HighLevel object
+            A finalised tunable object whose parameters will be tuned.
+        kwargs: Any
+            Variables that will be used for the computation of the graph.
+        n_trials: int
+            The number of trials optuna will execute for the tunable object.
+        storage: sqlite file name
+            Local file where the trials in this study will be saved.
+            Example: "sqlite:///example.db"
+        callback: callable
+            The objective function to be used for the tuning of parameters.
+        """
 
         self.tunable = tunable.copy()
         self.compute_kwargs = kwargs
@@ -31,9 +49,11 @@ class OptunaSampler:
         self.storage = storage
 
     def get_attributes(self):
+        "Returns a dictionary of attributes that characterize the study"
         return {"callback": self.callback}
 
     def get_study(self):
+        "Creates a new study or loads a pre-existing one if the name already exists"
         attrs = self.get_attributes()
         name = md5(dumps(attrs)).hexdigest()
         try:
@@ -51,7 +71,7 @@ class OptunaSampler:
         return (Exception,)
 
     def compute(self, **kwargs):
-        "returns the value of the graph"
+        "Returns the value of the graph after completing the set number of trials for the tuning of the parameters"
         self.get_study().optimize(
             lambda trial: self.objective(trial, **kwargs),
             self.n_trials,
@@ -62,14 +82,17 @@ class OptunaSampler:
         return value
 
     def _call_wrapper(self, graph, **kwargs):
+        "Computes and returns the value of the graph"
         self._value = graph.compute(**kwargs)
         return self._value
 
     def objective(self, trial, **kwargs):
+        "Computes and returns the objective function (callback) value for the next trial"
         tmp = self.get_next_trial(trial)
         return self.callback(lambda: self._call_wrapper(tmp, **kwargs))
 
     def get_next_trial(self, trial):
+        "Returns the next trial: a tunable object whose variables have been fixed with a combination of options"
         tmp = self.tunable.copy(reset=True)
         vars = self.tunable.variables
         values = self.get_suggestions(trial)
@@ -78,6 +101,7 @@ class OptunaSampler:
         return tmp
 
     def get_suggestions(self, trial):
+        "Returns a suggested option for each variable that will be tuned"
         vars = self.tunable.variables
         values = {}
         for v in vars:
@@ -90,6 +114,7 @@ class OptunaSampler:
 
     @staticmethod
     def get_var_args(var_type, var_values):
+        "Returns the arguments needed for each optuna type of variable"
         if var_type == "categorical":
             return (tuple(var_values),)
         elif var_type == "discrete_uniform":
@@ -98,13 +123,14 @@ class OptunaSampler:
 
     @staticmethod
     def deduce_type(variable):
-        "returns a type compatible with optuna: discrete_uniform, float, int, loguniform, uniform, categorical"
+        "Returns a type compatible with optuna: discrete_uniform, float, int, loguniform, uniform, categorical"
         # only categorical and discrete uniform are supported for the time being
         if isinstance(variable, range):
             return "discrete_uniform"
         return "categorical"
 
     def best_params(self, **kwargs):
+        "Returns the best options for the variables of this graph"
         study = self.get_study()
         study.optimize(
             lambda trial: self.objective(trial, **kwargs),
