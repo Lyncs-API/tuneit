@@ -196,7 +196,7 @@ class Node(Graph, Key, bind=False):
     def first_dependencies(self):
         "Iterates over the dependencies"
         for val in self:
-            if isinstance(val, Key):
+            if type(val) == Key:
                 yield Key(val)
 
     direct_dependencies = first_dependencies
@@ -207,13 +207,19 @@ class Node(Graph, Key, bind=False):
         deps = [self.key]
         yield deps[0]
         for val in self:
-            if isinstance(val, Key):
+            if not type(val) == Key:
+                continue
+            if str(val) in deps:
+                continue
+            if val in self.graph:
                 val = self.graph[val]
-            if isinstance(val, Node):
-                for dep in Node(val).dependencies:
-                    if dep not in deps:
-                        deps.append(dep)
-                        yield dep
+            else:
+                continue
+
+            for dep in Node(val).dependencies:
+                if dep not in deps:
+                    deps.append(dep)
+                    yield dep
 
     def visualize(self, **kwargs):
         """
@@ -287,10 +293,6 @@ def visualize(graph, start=None, end=None, groups=None, **kwargs):
             with dot.subgraph(name=f"cluster_{i}") as c:
                 c.attr(color="blue")
                 c.node_attr.update(style="filled", color="white")
-                # for n in group:
-                #    node = graph[n]
-                #    deps = [str(dep) for dep in node.first_dependencies if isinstance(graph.get_item_(dep),Variable)]
-                #    c.edges([(n, dep) for dep in deps])
                 for n in group:
                     node = graph[n]
                     c.node(n, node.label, **node.dot_attrs)
