@@ -36,7 +36,7 @@ class HighLevel(Node):
 
     @property
     def direct_variables(self):
-        "List of dependencies that are a variable"
+        "List of first dependencies that are a variable"
         return tuple(
             str(dep)
             for dep in self.direct_dependencies
@@ -69,6 +69,7 @@ class HighLevel(Node):
         return False
 
     def get_node(self, key):
+        "Returns a node of the graph as a finalized graph"
         if isinstance(key, Object):
             key = key.key
         return HighLevel(self.graph[key])
@@ -164,31 +165,23 @@ class HighLevel(Node):
         kwargs.setdefault("graph", self.graph)
         return compute(self.value, **kwargs)
 
-    def merge(self, nodes):
-        "check conditions and return a new graph with the nodes merged in one function"
-        # nodes must be functions, only one output is allowed and they must be consecutive/parallel
-        # new function must ensure that all operations are executed in the correct order
-
     def remove(self, nodes):
-        "removes the nodes that will be merged from the graph (except the last one)"
+        "Removes the list of nodes from the graph"
         for node in nodes:
             del self.graph[node]
 
-    def replace(self, last_node, new_node):
-        "replaces last_node with new_node and changes outside dependencies to the new node"
+    def replace(self, node, new_node):
+        "Replaces the dependencies to node with new_node"
+        key = str(Key(node))
+        new_key = str(Key(new_node))
         for node in self.graph:
-            list_of_deps = list(
-                str(dep) for dep in self.get_node(node).first_dependencies
-            )
-            for (i, dep) in enumerate(list_of_deps):
-                if dep == last_node:
-                    list(self.get_node(node).first_dependencies)[i].key = str(
-                        new_node.key
-                    )
-        self.graph[str(new_node.key)] = new_node
+            for dep in self.get_node(node).first_dependencies:
+                if dep == key:
+                    dep.key = str(new_key)
+        self.graph[new_key] = new_node
 
     def merge(self, nodes):
-        "merges a list of nodes from the graph into a new node"
+        "Returns a new graph with the list of nodes merged into a single node"
         for node in nodes:
             if not isinstance(self[node], Function):
                 raise ValueError("The node does not represent a function")
