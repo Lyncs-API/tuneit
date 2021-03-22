@@ -4,10 +4,11 @@ High Level vision of Tunable object
 
 __all__ = ["finalize"]
 
-from .graph import Node, Key
+from .graph import Node, Key, Graph
 from .variable import Variable
-from .tunable import Object, Function, compute, Data
-from .subgraph import Subgraph
+from .tunable import Object, Function, compute, Data, data
+
+# from .subgraph import Subgraph
 
 
 def finalize(tunable):
@@ -70,17 +71,41 @@ class HighLevel(Node):
 
     def get_node(self, key):
         "Returns a node of the graph as a finalized graph"
-        if isinstance(key, Object):
-            key = key.key
+        key = self.get_key(key)
         return HighLevel(self.graph[key])
 
     def __getitem__(self, key):
-        if isinstance(key, Object):
-            key = key.key
+
+        key = self.get_key(key)
         return self.graph[key].value
 
     def __setitem__(self, key, value):
+        key = self.get_key(key)
         self.graph[key] = value
+
+    def get_key(self, key, ntype=None):
+
+        if isinstance(key, Object):
+            key = key.key
+        if isinstance(key, Key):
+            key = Key(key).key
+        if key in self.graph:
+            return key
+        if not isinstance(key, str):
+            raise TypeError("key should be string")
+
+        keys = self.dependencies
+        if ntype:
+            keys = (k for k in keys if isinstance(self[k], ntype))
+
+        # Smart search
+        matches = list(filter(lambda k: str(k).startswith(key + "-"), keys))
+        if len(matches) > 1:
+            raise KeyError("More than one key matched to %s: %s" % (key, matches))
+        if len(matches) == 0:
+            raise KeyError("%s is not a key of %s" % (key, self))
+
+        return matches[0]
 
     def __copy__(self):
         return HighLevel(super().__copy__())
@@ -116,45 +141,36 @@ class HighLevel(Node):
 
         return res
 
-    def get_variable(self, variable):
-        "Returns the varible corresponding to var"
-        if isinstance(variable, Variable):
-            variable = variable.key
-        if isinstance(variable, Key):
-            variable = Key(variable).key
+    def get_variable(self, key):
+        "Returns the variable corresponding to var"
+        key = self.get_key(key, ntype=Variable)
+        return self[key]
 
-        if not variable in self.variables:
-            # Smart search
-            matches = list(
-                filter(lambda var: var.startswith(variable + "-"), self.variables)
-            )
-            if len(matches) > 1:
-                raise KeyError(
-                    "More than one variable matched to %s: %s" % (variable, matches)
+    def get_data(self, key):
+        "Returns the varible corresponding to var"
+        key = self.get_key(key, ntype=Data)
+        return self[key]
+
+    def add_deps(
+        self, start_node, end_node=None
+    ):  # start_node, end_node must be a strings
+        if not end_node:
+            end_node = self
+        else:
+            end_node = self.get_node(end_node)
+
+        start_node = self.get_variable(
+            start_node
+        )  # TO DO: should work for all types not variable only
+
+        end_node.value.deps = end_node.value.deps + (Key(start_node.key),)
+
+    def precompute(self, **kwargs):
+        for key in self.dependencies:
+            if self[key].precompute:
+                self[key] = Data(
+                    self.get_node(key).compute(**kwargs), label=self[key].label
                 )
-            if len(matches) == 0:
-                raise KeyError("%s is not a variable of %s" % (variable, self))
-            variable = matches[0]
-
-        return self[variable]
-
-    def get_data(self, data):
-        "Returns the varible corresponding to var"
-        if isinstance(data, Data):
-            data = data.key
-        if isinstance(data, Key):
-            data = Key(data).key
-
-        if not data in self.datas:
-            # Smart search
-            matches = list(filter(lambda var: var.startswith(data + "-"), self.datas))
-            if len(matches) > 1:
-                raise KeyError("More than one data matched to %s: %s" % (data, matches))
-            if len(matches) == 0:
-                raise KeyError("%s is not a data of %s" % (data, self))
-            data = matches[0]
-
-        return self[data]
 
     def fix(self, variable, value=None):
         "Fixes the value of the variable"
@@ -170,46 +186,48 @@ class HighLevel(Node):
         for node in nodes:
             del self.graph[node]
 
-    def replace(self, node, new_node):
-        "Replaces the dependencies to node with new_node"
-        key = str(Key(node))
-        new_key = str(Key(new_node))
-        for node in self.graph:
-            for dep in self.get_node(node).first_dependencies:
-                if dep == key:
-                    dep.key = str(new_key)
-        self.graph[new_key] = new_node
-
-    def merge(self, nodes):
+    def merge(self, nodes=None):
         "Returns a new graph with the list of nodes merged into a single node"
+        # if not nodes:
+        # mergers = detect_mergers
+        # for nodes in mergers... all the rest
         for node in nodes:
             if not isinstance(self[node], Function):
                 raise ValueError("The node does not represent a function")
         last_node, merge = self.mergeable(nodes)
         if not merge:
             raise ValueError("Group of nodes not mergeable")
-        nodes_values = [self[node] for node in nodes]
-        deps = set(
-            [
-                str(dep)
-                for node in nodes
-                for dep in self.get_node(node).first_dependencies
-            ]
+        deps = tuple(
+            set(
+                [
+                    str(dep)
+                    for node in nodes
+                    for dep in self.get_node(node).first_dependencies
+                    if dep not in nodes
+                ]
+            )
         )
-        deps = tuple([Key(dep) for dep in list(deps) if dep not in nodes])
-        sub = Subgraph(nodes_values, output=last_node, dependencies=deps)
-        new_node = Function(sub, args=sub.dependencies)
+        sub = {node: self[node] for node in nodes}
+        sub.update(
+            {dep: Data(None, label=f"dep{i}", info=dep) for (i, dep) in enumerate(deps)}
+        )
+        sub = finalize(Graph(sub)[last_node])
+        new_node = Function(
+            sub,
+            label="merged",
+            kwargs={f"dep{i}": Key(dep) for (i, dep) in enumerate(deps)},
+        )
         new_graph = self.copy(reset=True)
         nodes.remove(last_node)
         new_graph.remove(nodes)
-        new_graph.replace(last_node, new_node)
+        new_graph[last_node] = new_node
         return new_graph
 
     def consecutive(self, nodes):
         "implements a DFS to check if the undirected graph is connected (if all nodes are consecutive)"
         stack = [nodes[0]]
         unvisited = nodes[1:]
-        while stack != []:
+        while stack:
             u = stack[-1]
             appended = False
             for w in [str(dep) for dep in self.get_node(u).first_dependencies]:
@@ -218,7 +236,7 @@ class HighLevel(Node):
                     stack.append(w)
                     appended = True
                     break
-            if appended == False:
+            if not appended:
                 for w in [
                     str(node)
                     for node in nodes
@@ -229,9 +247,9 @@ class HighLevel(Node):
                         stack.append(w)
                         appended = True
                         break
-            if appended == False:
+            if not appended:
                 stack.pop()
-        if unvisited == []:
+        if not unvisited:
             return True
         return False
 
@@ -242,6 +260,22 @@ class HighLevel(Node):
         all_nodes = [
             str(n) for n in self.dependencies if isinstance(self[str(n)], Function)
         ]
+
+        # If the whole graph is given or if the subgraph contains the last node of the whole graph:
+        all_deps = [
+            str(dep)
+            for node in all_nodes
+            for dep in self.get_node(str(node)).first_dependencies
+        ]
+        for node in all_nodes:
+            if node not in all_deps and node in nodes:
+                common_outside = common_outside + [node]
+        if len(common_outside) == 1:
+            return common_outside[0], True
+        elif len(common_outside) > 1:
+            return common_outside, False
+
+        # If a subgraph is given:
         for node in all_nodes:
             deps = list(
                 set(
