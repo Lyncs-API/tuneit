@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 from varname import varname as _varname, VarnameRetrievingError
 from .graph import Graph, Node, Key
+from lyncs_utils import isiterable
 
 
 def varname(caller=1, default=None):
@@ -75,6 +76,7 @@ class Object:
     deps: Any = None
     label: str = None
     uid: Any = None
+    precompute: bool = False
 
     @classmethod
     def extract_deps(cls, deps):
@@ -128,6 +130,7 @@ class Object:
     @property
     def dependencies(self):
         "Returns the list of dependencies for the Object"
+        raise NotImplementedError
         return Node(self.tunable()).dependencies
 
     def copy(self, **kwargs):
@@ -184,7 +187,7 @@ Object.__eq2__ = Object.__eq__
 Object.__eq__ = lambda self, value: self.obj == value or self.__eq2__(value)
 
 
-def data(label, value=None, **kwargs):
+def data(value=None, label=None, **kwargs):
     """
     A tunable function call.
 
@@ -193,6 +196,7 @@ def data(label, value=None, **kwargs):
     label: str
 
     """
+    label = label or varname()
     return Data(value, label=label, **kwargs).tunable()
 
 
@@ -214,6 +218,15 @@ class Data(Object):
             if not self.check(val):
                 raise ValueError("Check did not return True")
         self.obj = val
+
+    def get_info(self):
+        if self.info is None:
+            return None
+        if isiterable(self.info):
+            return {key: getattr(self.obj, key, None) for key in self.info}
+        if callable(self.info):
+            return self.info(self.obj)
+        raise TypeError("Unsupported type for info")
 
 
 def function(fnc, *args, **kwargs):
@@ -384,6 +397,9 @@ class Tunable(Node, bind=False):
     def __compute__(self, **kwargs):
         # pylint: disable=W0613
         return Node(self).value
+
+    def __iter__(self):
+        raise TypeError("A tunable object is not iterable")
 
 
 def default_operator(fnc):
