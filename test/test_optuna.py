@@ -84,8 +84,8 @@ def test_optuna_sampler():
     # test get_next_trial
     temp = obj_A.get_next_trial(trial)
     assert len(temp.fixed_variables) == 2
-    var_A = temp.get_variable("preprocessing")
-    var_B = temp.get_variable("searching")
+    var_A = temp.get_variable("which_preprocessing")
+    var_B = temp.get_variable("which_searching")
     assert var_A.fixed and var_B.fixed
 
     # test get_suggetions

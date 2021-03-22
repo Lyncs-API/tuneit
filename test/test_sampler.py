@@ -37,7 +37,7 @@ def test_sampler():
 
     obj = sample(
         result,
-        ["preprocessing", "searching"],
+        ["which_preprocessing", "which_searching"],
         callback=callback_function,
         callback_calls=True,
     )
