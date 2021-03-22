@@ -17,6 +17,10 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
         super().__init__(tunable)
         self.tuner_kwargs = kwargs
 
+    def copy(self, **kwargs):
+        tmp = super().copy(**kwargs)
+        return Tuner(tmp, **self.tuner_kwargs)
+
     def compute(self, **kwargs):
         "Calls a sampler to tune the whole graph"
         # graph_manager = self.divide_graph()
