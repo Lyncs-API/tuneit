@@ -3,6 +3,7 @@ from optuna.trial import Trial
 from optuna import exceptions
 from hashlib import md5
 from dill import dumps
+from tuneit.finalize import HighLevel
 
 
 class OptunaSampler:
@@ -36,7 +37,7 @@ class OptunaSampler:
             The objective function to be used for the tuning of parameters.
         """
 
-        self.tunable = tunable.copy()
+        self.tunable = HighLevel(tunable).copy()
         self.compute_kwargs = kwargs
 
         self.callback = callback
@@ -50,7 +51,11 @@ class OptunaSampler:
 
     def get_attributes(self):
         "Returns a dictionary of attributes that characterize the study"
-        return {"callback": self.callback}
+        attrs = {"callback": self.callback}
+        for data in self.tunable.datas:
+            info = self.tunable[data].get_info()
+            attrs[data] = info
+        return attrs
 
     def get_study(self):
         "Creates a new study or loads a pre-existing one if the name already exists"
@@ -89,6 +94,7 @@ class OptunaSampler:
     def objective(self, trial, **kwargs):
         "Computes and returns the objective function (callback) value for the next trial"
         tmp = self.get_next_trial(trial)
+        tmp.precompute(**kwargs)
         return self.callback(lambda: self._call_wrapper(tmp, **kwargs))
 
     def get_next_trial(self, trial):
