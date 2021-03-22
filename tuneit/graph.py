@@ -281,7 +281,10 @@ def visualize(graph, start=None, end=None, groups=None, **kwargs):
         if start and start not in node.dependencies:
             continue
 
-        dot.node(str(key), node.label, **node.dot_attrs)
+        if hasattr(node.value, "precompute") and node.value.precompute:
+            dot.node(str(key), node.label, style="filled", color="lightblue2")
+        else:
+            dot.node(str(key), node.label, **node.dot_attrs)
 
         for dep in node.first_dependencies:
             if start and start not in graph[dep].dependencies:
