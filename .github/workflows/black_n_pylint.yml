@@ -16,9 +16,6 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
 
-      - name: Install MPI openmpi
-        run: bash .bash/install-openmpi.sh
-
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
