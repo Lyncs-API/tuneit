@@ -5,6 +5,9 @@ from tuneit.tools.time import Time, default_timer
 from tuneit.tools.optuna import OptunaSampler
 from tuneit.tools.base import Sampler
 import pytest
+import scipy.sparse as sp
+from tuneit.tunable import Tunable
+from tuneit.finalize import HighLevel
 
 
 def test_tuner():
@@ -55,14 +58,15 @@ def test_tuner():
     # test get_best_trial function in Tuner
     res = obj_C.get_best_trial()
     assert isinstance(res, dict)
-    assert "preprocessing" in {k.split("-")[0]: v for k, v in res.items()}
+    assert "which_preprocessing" in {k.split("-")[0]: v for k, v in res.items()}
     assert (
-        next(v for k, v in res.items() if k.startswith("preprocessing"))
+        next(v for k, v in res.items() if k.startswith("which_preprocessing"))
         in preprocessing.keys()
     )
-    assert "searching" in {k.split("-")[0]: v for k, v in res.items()}
+    assert "which_searching" in {k.split("-")[0]: v for k, v in res.items()}
     assert (
-        next(v for k, v in res.items() if k.startswith("searching")) in searching.keys()
+        next(v for k, v in res.items() if k.startswith("which_searching"))
+        in searching.keys()
     )
     # test get_sampler function in Tuner
     assert obj_C.get_sampler() == OptunaSampler
@@ -84,3 +88,51 @@ def test_tuner():
         result, sampler=None, callback=lambda fnc: Time(default_timer(fnc))
     ).get_sampler_kwargs()
     assert not bool(kwargs)
+
+    # Example from the README file:
+
+    @alternatives(
+        coo=lambda matrix: sp.coo_matrix(matrix),
+        csc=lambda matrix: sp.csc_matrix(matrix),
+        csr=lambda matrix: sp.csr_matrix(matrix),
+    )
+    def create_matrix(matrix):
+        res = sp.bsr_matrix(matrix)
+        return res
+
+    create_matrix.var_name = "foo"
+    mat = data(info=["shape", "dtype"])
+    vec = data(info=["shape", "dtype"])
+    assert isinstance(mat, Tunable)
+    assert isinstance(vec, Tunable)
+    mat = create_matrix(mat)
+    assert isinstance(mat, Tunable)
+    mul = finalize(mat * vec)
+    assert isinstance(mul, HighLevel)
+    assert len(list(dep for dep in mul.dependencies if str(dep).startswith("foo"))) == 1
+    assert (
+        len(
+            list(
+                dep
+                for dep in mul.dependencies
+                if str(dep).startswith("which_create_matrix")
+            )
+        )
+        == 0
+    )
+
+    mul.add_deps("foo")
+    assert (
+        len(list(dep for dep in mul.first_dependencies if str(dep).startswith("foo")))
+        == 1
+    )
+    mul["create_matrix"].precompute = True
+    assert mul["create_matrix"].precompute == True
+    obj = optimise(mul, sampler="optuna")
+    assert isinstance(obj, Tuner)
+    matrix = sp.random(100, 100, 0.1)
+    vector = numpy.random.rand(100)
+    res = obj(mat=matrix, vec=vector)
+    assert isinstance(res, numpy.ndarray)
+    assert res.shape == (100,)
+    numpy.testing.assert_array_almost_equal(res, matrix * vector, decimal=8)
