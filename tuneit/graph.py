@@ -196,8 +196,10 @@ class Node(Graph, Key, bind=False):
     def first_dependencies(self):
         "Iterates over the dependencies"
         for val in self:
-            if isinstance(val, Key):
+            if type(val) == Key:
                 yield Key(val)
+
+    direct_dependencies = first_dependencies
 
     @property
     def dependencies(self):
@@ -205,13 +207,19 @@ class Node(Graph, Key, bind=False):
         deps = [self.key]
         yield deps[0]
         for val in self:
-            if isinstance(val, Key):
+            if not type(val) == Key:
+                continue
+            if str(val) in deps:
+                continue
+            if val in self.graph:
                 val = self.graph[val]
-            if isinstance(val, Node):
-                for dep in Node(val).dependencies:
-                    if dep not in deps:
-                        deps.append(dep)
-                        yield dep
+            else:
+                continue
+
+            for dep in Node(val).dependencies:
+                if dep not in deps:
+                    deps.append(dep)
+                    yield dep
 
     def visualize(self, **kwargs):
         """
@@ -242,7 +250,7 @@ def join_graphs(graphs):
     return Graph()
 
 
-def visualize(graph, start=None, end=None, **kwargs):
+def visualize(graph, start=None, end=None, groups=None, **kwargs):
     "Visualizes the graph returning a dot graph"
     assert isinstance(graph, Graph), "graph must be of type Graph"
 
@@ -273,12 +281,24 @@ def visualize(graph, start=None, end=None, **kwargs):
         if start and start not in node.dependencies:
             continue
 
-        dot.node(str(key), node.label, **node.dot_attrs)
+        if hasattr(node.value, "precompute") and node.value.precompute:
+            dot.node(str(key), node.label, style="filled", color="lightblue2")
+        else:
+            dot.node(str(key), node.label, **node.dot_attrs)
 
         for dep in node.first_dependencies:
             if start and start not in graph[dep].dependencies:
                 continue
             dot.edge(str(dep), str(key))
+
+    if groups is not None:
+        for (i, group) in enumerate(groups):
+            with dot.subgraph(name=f"cluster_{i}") as c:
+                c.attr(color="blue")
+                c.node_attr.update(style="filled", color="white")
+                for n in group:
+                    node = graph[n]
+                    c.node(n, node.label, **node.dot_attrs)
 
     return dot
 

@@ -225,6 +225,8 @@ class alternatives(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(**self.args_to_kwargs(*args), **kwargs)
         self.default = next(iter(self))
+        self.var_name = None
+        self._closed = False
 
     @wraps(dict.update)
     def update(self, *args, **kwargs):
@@ -249,9 +251,20 @@ class alternatives(dict):
         self.update(kwargs)
         return next(iter(kwargs))
 
+    @property
+    def var_name(self):
+        if self._var_name is None:
+            return "which_" + self.__name__
+        return self._var_name
+
+    @var_name.setter
+    def var_name(self, key):
+        self._var_name = key
+
     def __call__(self, *args, _key=None, **kwargs):
-        if len(args) == 1 and callable(args[0]):
+        if len(args) == 1 and callable(args[0]) and not self._closed:
             self.default = self.add(args[0])
+            self._closed = True
             return self
 
         if _key:
@@ -260,6 +273,6 @@ class alternatives(dict):
         return function(
             self,
             *args,
-            _key=variable(self.keys(), default=self.default, label=self.__name__),
+            _key=variable(self.keys(), default=self.default, label=self.var_name),
             **kwargs,
         )

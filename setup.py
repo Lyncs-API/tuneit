@@ -6,6 +6,7 @@ requirements = [
     "varname",
     "tabulate",
     "numpy",
+    "lyncs_utils",
 ]
 
 extras = {
@@ -13,6 +14,7 @@ extras = {
         "graphviz",
     ],
     "test": ["pytest", "pytest-cov"],
+    "optuna": ["optuna"],
 }
 
 setup(

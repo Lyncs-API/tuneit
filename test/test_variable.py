@@ -45,9 +45,6 @@ def test_variable():
     with raises(RuntimeError):
         d.value = 3
 
-    d = Variable(range(10))
-    d.value = Variable(range(10))
-
     d = Permutation((1, 2, 3))
     d.value = (3, 2, 1)
     assert d.size == 6
