@@ -71,30 +71,34 @@ class Sampler:
             self.n_samples = n_samples
 
         self.store_value = store_value
-        
-        self._trials=None
-        self.record=record
-    
+
+        self._trials = None
+        self.record = record
+
     @property
     def record(self):
         return self.trials is not None
-    
+
     @record.setter
-    def record(self,value):
-        if value==self.record:
+    def record(self, value):
+        if value == self.record:
             return
         if value is False:
-            self._trials=None
+            self._trials = None
         elif value is True:
-            self._trials = pd.DataFrame(columns= ["trial_id"]+list(self.headers)[:-1]+list(self.tunable.get_info().keys())+["time"])
+            self._trials = pd.DataFrame(
+                columns=["trial_id"]
+                + list(self.headers)[:-1]
+                + list(self.tunable.get_info().keys())
+                + ["time"]
+            )
         else:
             raise TypeError("Value is neither true or false")
-    
+
     @property
     def trials(self):
         return self._trials
-    
-    
+
     @property
     def max_samples(self):
         "Size of the parameter space (product of variables' size)"
@@ -158,12 +162,17 @@ class Sampler:
                     result = self.callback(self._perform_call(tmp))
             except Exception as err:
                 result = err
-         
+
             if self.record:
                 index = len(self.trials)
-                self.trials.loc[index] = [index, *list(params),*list(self.tunable.get_info().values()), result]
+                self.trials.loc[index] = [
+                    index,
+                    *list(params),
+                    *list(self.tunable.get_info().values()),
+                    result,
+                ]
             yield params, result
-    
+
     def run(self):
         return tuple(self)
 
@@ -172,7 +181,7 @@ class Sampler:
         if self.store_value:
             self._value = value
         return value
-    
+
     def __call__(self, *args, **kwargs):
         "kwargs are data input of the graph"
         if args:
@@ -185,7 +194,7 @@ class Sampler:
             except KeyError:
                 pass
             self.tunable.fix(key, val)
-       
+
         return self
 
     @property
