@@ -14,6 +14,7 @@ from itertools import product
 from tabulate import tabulate
 from ..finalize import finalize
 from lyncs_utils import isiterable
+import pandas as pd
 
 
 class Sampler:
@@ -28,6 +29,7 @@ class Sampler:
         callback_calls=False,
         label=None,
         store_value=False,
+        record=False,
         **kwargs,
     ):
         "Initializes the tunable object and the variables"
@@ -69,7 +71,30 @@ class Sampler:
             self.n_samples = n_samples
 
         self.store_value = store_value
-
+        
+        self._trials=None
+        self.record=record
+    
+    @property
+    def record(self):
+        return self.trials is not None
+    
+    @record.setter
+    def record(self,value):
+        if value==self.record:
+            return
+        if value is False:
+            self._trials=None
+        elif value is True:
+            self._trials = pd.DataFrame(columns= ["trial_id"]+list(self.headers)[:-1]+list(self.tunable.get_info().keys())+["time"])
+        else:
+            raise TypeError("Value is neither true or false")
+    
+    @property
+    def trials(self):
+        return self._trials
+    
+    
     @property
     def max_samples(self):
         "Size of the parameter space (product of variables' size)"
@@ -133,13 +158,35 @@ class Sampler:
                     result = self.callback(self._perform_call(tmp))
             except Exception as err:
                 result = err
+         
+            if self.record:
+                index = len(self.trials)
+                self.trials.loc[index] = [index, *list(params),*list(self.tunable.get_info().values()), result]
             yield params, result
+    
+    def run(self):
+        return tuple(self)
 
     def _perform_call(self, graph):
         value = graph.compute(**self.compute_kwargs)
         if self.store_value:
             self._value = value
         return value
+    
+    def __call__(self, *args, **kwargs):
+        "kwargs are data input of the graph"
+        if args:
+            raise ValueError("args not supported, please pass them as kwargs")
+
+        for key, val in kwargs.items():
+            try:
+                self.tunable.get_data(key).set(val)
+                continue
+            except KeyError:
+                pass
+            self.tunable.fix(key, val)
+       
+        return self
 
     @property
     def value(self):
