@@ -39,6 +39,7 @@ def benchmark(
     timer_kwargs=None,
     samples=None,
     label="Time",
+    record=False,
     **kwargs,
 ):
     """
@@ -58,6 +59,7 @@ def benchmark(
     timer_kwargs: dict
         Arguments passed to the timer. For default timer:
         - number: (int) number of iterations
+
     kwargs: dict
         Variables passed to the compute function. See help(tunable.compute)
     """
@@ -69,6 +71,7 @@ def benchmark(
         callback_calls=True,
         samples=samples,
         label=label,
+        record=record,
         **kwargs,
     )
 
