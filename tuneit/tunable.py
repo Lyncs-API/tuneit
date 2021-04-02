@@ -180,7 +180,11 @@ class Object:
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="rect")
+        attrs = dict(shape="rect")
+        if self.precompute:
+            attrs["style"] = "filled"
+            attrs["color"] = "lightblue2"
+        return attrs
 
 
 Object.__eq2__ = Object.__eq__
@@ -346,7 +350,9 @@ class Function(Object):
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="oval")
+        attrs = super().__dot_attrs__
+        attrs["shape"] = "oval"
+        return attrs
 
 
 def callattr(self, key, *args, **kwargs):
