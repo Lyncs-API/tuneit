@@ -86,11 +86,12 @@ class Sampler:
         if value is False:
             self._trials = None
         elif value is True:
+            data_keys = [
+                key[: key.rfind("-")] + key[key.rfind("__") :]
+                for key in list(self.tunable.get_info().keys())
+            ]
             self._trials = pd.DataFrame(
-                columns=["trial_id"]
-                + list(self.headers)[:-1]
-                + list(self.tunable.get_info().keys())
-                + ["time"]
+                columns=["trial_id"] + list(self.headers)[:-1] + data_keys + ["time"]
             )
         else:
             raise TypeError("Value is neither true or false")
