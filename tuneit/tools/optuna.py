@@ -49,17 +49,10 @@ class OptunaSampler:
 
         self.storage = storage
 
-    def get_attributes(self):
-        "Returns a dictionary of attributes that characterize the study"
-        attrs = {"callback": self.callback}
-        for data in self.tunable.datas:
-            info = self.tunable[data].get_info()
-            attrs[data] = info
-        return attrs
-
     def get_study(self):
         "Creates a new study or loads a pre-existing one if the name already exists"
-        attrs = self.get_attributes()
+        attrs = self.tunable.get_info()
+        attrs["callback"] = self.callback
         name = md5(dumps(attrs)).hexdigest()
         try:
             study = optuna.create_study(study_name=name, storage=self.storage)
