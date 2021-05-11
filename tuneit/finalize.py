@@ -8,8 +8,6 @@ from .graph import Node, Key, Graph
 from .variable import Variable
 from .tunable import Object, Function, compute, Data, data
 
-# from .subgraph import Subgraph
-
 
 def finalize(tunable):
     "Returns a finalized tunable object that has several high-level functions"
@@ -107,6 +105,14 @@ class HighLevel(Node):
 
         return matches[0]
 
+    def get_info(self):
+        all_info = {}
+        for data in self.datas:
+            info = self[data].get_info()
+            for key in list(info):
+                all_info[f"{data}__" + key] = info[key]
+        return all_info
+
     def __copy__(self):
         return HighLevel(super().__copy__())
 
@@ -159,9 +165,7 @@ class HighLevel(Node):
         else:
             end_node = self.get_node(end_node)
 
-        start_node = self.get_variable(
-            start_node
-        )  # TO DO: should work for all types not variable only
+        start_node = self[start_node]
 
         end_node.value.deps = end_node.value.deps + (Key(start_node.key),)
 
