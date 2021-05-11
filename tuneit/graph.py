@@ -22,11 +22,18 @@ class Graph(metaclass=CastableType, attrs=["backend"]):
         self.backend = {} if graph is None else dict(graph)
 
     def __getitem__(self, key):
+        if isinstance(key, int):
+            return self[list(self.keys())[key]]
         if isinstance(key, Key):
             key = Key(key).key
         node = Node(self)
         Key(node).key = key
         return node
+
+    def index(self, key):
+        if isinstance(key, Key):
+            key = Key(key).key
+        return list(self.keys()).index(key)
 
     def __setitem__(self, key, value):
         if isinstance(key, Key):
@@ -276,15 +283,17 @@ def visualize(graph, start=None, end=None, groups=None, **kwargs):
     dot = default_graph(**kwargs)
 
     for key in keys:
+        i = graph.index(key)
         node = graph[key]
 
         if start and start not in node.dependencies:
             continue
 
-        if hasattr(node.value, "precompute") and node.value.precompute:
-            dot.node(str(key), node.label, style="filled", color="lightblue2")
-        else:
-            dot.node(str(key), node.label, **node.dot_attrs)
+        dot.node(
+            str(key),
+            label=f"""<{node.label}<BR /><FONT POINT-SIZE="10">{i}</FONT>>""",
+            **node.dot_attrs,
+        )
 
         for dep in node.first_dependencies:
             if start and start not in graph[dep].dependencies:
@@ -294,8 +303,7 @@ def visualize(graph, start=None, end=None, groups=None, **kwargs):
     if groups is not None:
         for (i, group) in enumerate(groups):
             with dot.subgraph(name=f"cluster_{i}") as c:
-                c.attr(color="blue")
-                c.node_attr.update(style="filled", color="white")
+                c.attr(style="dashed", color="blue")
                 for n in group:
                     node = graph[n]
                     c.node(n, node.label, **node.dot_attrs)
