@@ -1,8 +1,5 @@
-Examples
-========
-
-Example 1: A simple tuning example using sparse matrices
---------------------------------------------------------
+Example: A small tuning example using sparse matrices
+=====================================================
 
 :code:`tuneit` is imported as shown below along with some other packages that are used in this example:
 
@@ -14,28 +11,22 @@ Example 1: A simple tuning example using sparse matrices
 
 Firstly, a simple graph is constructed, which computes the multiplication of a sparse matrix with a vector. 
 The graph contains one variable to be tuned, which represents the different formats that can be used for the sparse matrix.
-The following function creates the sparse matrix and by using :code:`alteratives` more options are added for the format that will 
+The following function creates the sparse matrix and by using :code:`alternatives` more options are added for the format that will 
 be used to express the matrix (available in the :code:`scipy.sparse` package).
 
 .. code-block:: python
 
    @alternatives(
+       var_name='which_sparse',
        coo = lambda matrix: sp.coo_matrix(matrix),
        csc = lambda matrix: sp.csc_matrix(matrix),
        csr = lambda matrix: sp.csr_matrix(matrix)
    )
-   def create_matrix(matrix): 
-       res = sp.bsr_matrix(matrix)
-       return res
+   def bsr(matrix): 
+       return sp.bsr_matrix(matrix)
 
-In this way, we have created a function :code:`create_matrix` that expresses the given sparse matrix in an appropriate format and a variable 
-to be tuned. The range of the variable contains all different options that can be used to express the sparse matrix, which are included in the 
-function above (:code:`coo,csc,csr,bsr`). The default name of the variable is :code:`which_create_matrix` after the name of the function that 
-creates it, but it can be easily changed as shown below:
-
-.. code-block:: python
-
-   create_matrix.var_name="foo"
+In this way, we have created a function :code:`bsr` that expresses the given sparse matrix in an appropriate format and a variable 
+to be tuned. The range of the variable :code:`which_sparse` contains all different options that can be used to express the sparse matrix, which are included in the function above (:code:`coo,csc,csr,bsr`). 
 
 The graph takes as input the matrix and the vector to be multiplied. One option is to create a matrix and a vector at random:
 
@@ -55,12 +46,12 @@ Or just create two generic data objects, which will take their actual value late
 about the new data object can be given using :code:`info`. As shown above, some characteristics about the new objects are given by the 
 attributes :code:`shape` and :code:`dtype`. 
 
-In addition, the :code:`create_matrix` function constructed previously can now be used. The new :code:`mat` object created after 
-:code:`create_matrix` is called on the object :code:`mat` (created above) is a tunable object.
+In addition, the :code:`bsr` function constructed previously can now be used. The new :code:`mat` object created after 
+:code:`bsr` is called on the object :code:`mat` (created above) is a tunable object.
 
 .. code-block:: python
 
-   mat=create_matrix(mat)
+   mat=bsr(mat)
 
 The final graph :code:`mul` that expresses the multiplication between the vector :code:`vec` and the sparse matrix :code:`mat` is created 
 as shown below:
@@ -71,6 +62,17 @@ as shown below:
 
 .. 
    Do I need more explanations about the finalize function here and why it is needed?
+   
+Furthermore, we define a random sparse matrix and a random vector that will be used later on when actual values are needed to be passed for the :code:`mat,vec` objects created above.
+
+.. code-block:: python
+
+    matrix = sp.random(100,100,0.1)
+    vector = np.random.rand(100)
+
+
+Visualize
+---------
 
 The graph can now be visualized using:
 
@@ -81,13 +83,12 @@ The graph can now be visualized using:
 The result is shown below:
 
 .. image:: images/visualised_graph1.png
-   :width: 400
+   :width: 450
 
-The data objects are shown in rectangles, the functions to be computed are presented in oval shapes, while the variables that have not taken a 
-fixed value yet are shown in red diamonds. 
+The data objects are shown in rectangles, the functions to be computed are presented in oval shapes, while the variables that have not taken a fixed value yet are shown in red diamonds. 
 
-Note: Each node in the graph is represented by its name (such as :code:`create_matrix`) concatenated with a random sequence of characters, which
-is not shown in its visualisation (for instance :code:`create_matrix-ad93fc5283b9d3a0963c3e65eb5055ff`). 
+Note: Each node in the graph is represented by its name (such as :code:`bsr`) concatenated with a random sequence of characters, which
+is not shown in its visualisation (for instance :code:`bsr-2b53519cefa68a68788760b169fee0b4`). 
 The small indices included in the nodes of the visualised graph allow the user to distinguish between multiple operations of the same kind 
 (e.g. multiplications) and to find out the whole unique name of a node in case it is needed in an operation:
 
@@ -97,14 +98,128 @@ For instance the following code should return the whole name of the node that co
 
    mul.graph[2]
 
-For the purposes of this example, we would like to tune the variable :code:`foo` based only on the computation time of the multiplication 
-(i.e. excluding the time taken by the function :code:`create_matrix` to construct the matrix). In order to achieve this, a link has to be added 
-between the multiplication and :code:`foo`, as they are not currently directly connected (:code:`foo` is added as a dependency to the last node 
+
+Crosscheck 
+----------
+
+The function :code:`crosscheck` can be called on the finalised object :code:`mul` as shown below. The function returns a callable sampler 
+object.  
+
+.. code-block:: python
+
+   obj = crosscheck(mul)
+
+If it is then called using real values (since the input :code:`mat,vec` of the graph was created using generic data objects) the sampler object
+will iterate through all the possible alternative options for the variable of the graph (:code:`which_sparse`) and return :code:`True` only for the ones 
+that produce the correct result of the graph. The :code:`crosscheck` function is basically a way to check that all alternatives options return 
+the correct result.
+
+.. code-block:: python
+
+   obj(mat=matrix,vec=vector)
+
+The result of the above operation is:
+
+.. table::
+
+    ==============  ========
+    which_sparse    xcheck
+    ==============  ========
+    coo             True
+    csc             True
+    csr             True
+    bsr             True
+    ==============  ========
+
+
+Benchmark 
+---------
+
+The function :code:`benchmark` can be called on the finalised object :code:`mul` as shown below. The function returns a callable sampler 
+object.  
+
+.. code-block:: python
+
+   obj = benchmark(mul)
+
+If it is then called using real values (since the input :code:`mat,vec` of the graph was created using generic data objects) the sampler object
+will iterate through all the possible alternative options for the variable of the graph (:code:`which_sparse`) and time the execution of graph using each
+option. The :code:`benchmark` function is basically a way to compare the execution times of all alternatives options of the variable.
+
+.. code-block:: python
+
+   obj(mat=matrix,vec=vector)
+
+The result of the above operation is:
+
+.. table::
+
+    ==============  ============
+    which_sparse    Time
+    ==============  ============
+    coo             448.800 usec
+    csc             663.900 usec
+    csr             1.796 msec
+    bsr             1.551 msec
+    ==============  ============
+
+The :code:`bechmark` function has also an argument called :code:`record`, which if it set to :code:`True` allows the execution times of the graph
+using alternative options for the variable to be stored in a :code:`panda` dataframe. In addition, now there is the option of also comparing
+the execution times that result not only by the various alternatives for the variable, but also different inputs. For example, in the code below
+different sizes of inputs are passed in each execution of the sampler. As a result, the returned dataframe :code:`trials` will contain the execution
+time of the graph for all combinations of alternative options of the variable and different sizes of inputs.
+
+.. code-block:: python
+
+   obj = benchmark(mul, record=True) 
+   for n in [1<<exponent for exponent in range(16)]:
+       obj(mat=sp.random(n,n,0.1),vec=np.random.rand(n)).run()
+   
+The dataframe can be accessed as shown below:
+
+.. code-block:: python   
+
+   obj.trials
+   
+The produced dataframe looks like this:
+
+.. table::
+
+
+    ==========  ==============  ==============  ============  ============  ============  ==========
+      trial_id  which_sparse    mat_shape       mat_dtype     vec_shape     vec_dtype          time
+    ==========  ==============  ==============  ============  ============  ============  ==========
+             0  coo             (1, 1)          float64       (1,)          float64       0.0003279
+             1  csc             (1, 1)          float64       (1,)          float64       0.0007483
+             2  csr             (1, 1)          float64       (1,)          float64       0.0012226
+             3  bsr             (1, 1)          float64       (1,)          float64       0.0014047
+             4  coo             (2, 2)          float64       (2,)          float64       0.0006326
+           ...  ...             ...             ...           ...           ...           ...
+            59  bsr             (16384, 16384)  float64       (16384,)      float64       7.1622
+            60  coo             (32768, 32768)  float64       (32768,)      float64       2.13661
+            61  csc             (32768, 32768)  float64       (32768,)      float64       37.8039
+            62  csr             (32768, 32768)  float64       (32768,)      float64       37.1632
+            63  bsr             (32768, 32768)  float64       (32768,)      float64       40.3954
+    ==========  ==============  ==============  ============  ============  ============  ==========
+
+The dataframe can be then used to compare different sizes of inputs for the different alternatives for the variable. One way to do this visually
+is producing a graph like it is shown below:
+
+.. image:: images/plot.png
+   :width: 450
+
+
+Optimize:
+---------
+
+For the purposes of this example, we would like to tune the variable :code:`which_sparse` based only on the computation time of the multiplication 
+(i.e. excluding the time taken by the function :code:`bsr` to construct the matrix). In order to achieve this, a link has to be added 
+between the multiplication and :code:`which_sparse`, as they are not currently directly connected (:code:`which_sparse` is added as a dependency to the last node 
 of the graph):
 
 .. code-block:: python
 
-   mul.add_deps('foo')
+   mul.add_deps('which_sparse')
 
 The new link can be observed by running the code:
 
@@ -113,17 +228,17 @@ The new link can be observed by running the code:
    visualize(mul)
 
 .. image:: images/visualised_graph2.png
-   :width: 400
+   :width: 450
 
-In addition, the :code:`create_matrix` node in the graph needs to be marked as one to be precomputed so that its computation time is not 
+In addition, the :code:`bsr` node in the graph needs to be marked as one to be precomputed so that its computation time is not 
 taken into account when the execution of the graph is timed during the tuning of the variable. 
-Note: In the following operation we can use the name :code:`create_matrix` for the node only because it is unique in the graph. If there were 
-multiple operations of the same kind (e.g. the function :code:`create_matrix` is used twice in the graph), then the full name of the node would 
+Note: In the following operation we can use the name :code:`bsr` for the node only because it is unique in the graph. If there were 
+multiple operations of the same kind (e.g. the function :code:`bsr` is used twice in the graph), then the full name of the node would 
 have to be used.
 
 .. code-block:: python
 
-   mul['create_matrix'].precompute=True 
+   mul['bsr'].precompute=True 
 
 .. 
    should I include a visualisation of the node marked as precomputed?
@@ -151,115 +266,7 @@ For example:
 
 .. code-block:: python
 
-   obj(mat=sp.random(100,100,0.1),vec=np.random.rand(100))
+   obj(mat=matrix,vec=vector)
 
 .. 
    do I need to include a picture of the result here? (what the tuner returns after it is called a few times)
-
-Example 2: Crosscheck and Benchmark
------------------------------------
-
-Example 2 starts by reusing some code from Example 1 (explanations about the following lines of code are given above).
-
-.. code-block:: python
-
-   from tuneit import *
-   import scipy.sparse as sp
-   import numpy as np
-
-   @alternatives(
-       coo = lambda matrix: sp.coo_matrix(matrix),
-       csc = lambda matrix: sp.csc_matrix(matrix),
-       csr = lambda matrix: sp.csr_matrix(matrix)
-   )
-   def create_matrix(matrix): 
-       res = sp.bsr_matrix(matrix)
-       return res
-
-    create_matrix.var_name="foo"
-    mat=data(info=["shape","dtype"])
-    vec=data(info=["shape","dtype"])
-    mat=create_matrix(mat)
-    graph = finalize(mat*vec)
-
-
-In addition, we define a random sparse matrix and a random vector that will be used later on when actual values are needed to be passed for the
-:code:`mat,vec` objects created above.
-
-.. code-block:: python
-
-    matrix = sp.random(100,100,0.1)
-    vector = np.random.rand(100)
-
-Crosscheck
-~~~~~~~~~~
-
-The function :code:`crosscheck` can be called on the finalised object :code:`graph` as shown below. The function returns a callable sampler 
-object.  
-
-.. code-block:: python
-
-   obj = crosscheck(graph)
-
-If it is then called using real values (since the input :code:`mat,vec` of the graph was created using generic data objects) the sampler object
-will iterate through all the possible alternative options for the variable of the graph (:code:`foo`) and return :code:`True` only for the ones 
-that produce the correct result of the graph. The :code:`crosscheck` function is basically a way to check that all alternatives options return 
-the correct result.
-
-.. code-block:: python
-
-   obj(mat=matrix,vec=vector)
-
-The result of the above operation is:
-
-.. image:: images/crosscheck.png
-
-
-Benchmark
-~~~~~~~~~
-
-The function :code:`benchmark` can be called on the finalised object :code:`graph` as shown below. The function returns a callable sampler 
-object.  
-
-.. code-block:: python
-
-   obj = benchmark(graph)
-
-If it is then called using real values (since the input :code:`mat,vec` of the graph was created using generic data objects) the sampler object
-will iterate through all the possible alternative options for the variable of the graph (:code:`foo`) and time the execution of graph using each
-option. The :code:`benchmark` function is basically a way to compare the execution times of all alternatives options of the variable.
-
-.. code-block:: python
-
-   obj(mat=matrix,vec=vector)
-
-The result of the above operation is:
-
-.. image:: images/benchmark.png
-
-The :code:`bechmark` function has also an argument called :code:`record`, which if it set to :code:`True` allows the execution times of the graph
-using alternative options for the variable to be stored in a :code:`panda` dataframe. In addition, now there is the option of also comparing
-the execution times that result not only by the various alternatives for the variable, but also different inputs. For example, in the code below
-different sizes of inputs are passed in each execution of the sampler. As a result, the returned dataframe :code:`trials` will contain the execution
-time of the graph for all combinations of alternative options of the variable and different sizes of inputs.
-
-.. code-block:: python
-
-   obj=benchmark(graph, record=True) 
-   for n in [1<<exponent for exponent in range(16)]:
-       obj(mat=scipy.sparse.random(n,n,0.1),vec=np.random.rand(n)).run()
-   
-The dataframe can be accessed as shown below:
-
-.. code-block:: python   
-
-   obj.trials
-   
-The produced dataframe looks like this:
-
-.. image:: images/df.png
-
-The dataframe can be then used to compare different sizes of inputs for the different alternatives for the variable. One way to do this visually
-is producing a graph like it is shown below:
-
-.. image:: images/plot.png
