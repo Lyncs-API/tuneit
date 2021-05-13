@@ -7,6 +7,7 @@ requirements = [
     "tabulate",
     "numpy",
     "lyncs_utils",
+    "pandas",
 ]
 
 extras = {
