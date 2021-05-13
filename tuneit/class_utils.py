@@ -222,10 +222,10 @@ class alternatives(dict):
 
         return kwargs
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, var_name=None, *args, **kwargs):
         super().__init__(**self.args_to_kwargs(*args), **kwargs)
         self.default = next(iter(self))
-        self.var_name = None
+        self._var_name = var_name
         self._closed = False
 
     @wraps(dict.update)
