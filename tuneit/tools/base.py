@@ -87,7 +87,7 @@ class Sampler:
             self._trials = None
         elif value is True:
             data_keys = [
-                key[: key.rfind("-")] + key[key.rfind("__") :]
+                key[: key.rfind("-")] + key[key.rfind("_") :]
                 for key in list(self.tunable.get_info().keys())
             ]
             self._trials = pd.DataFrame(

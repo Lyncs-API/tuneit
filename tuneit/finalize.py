@@ -110,7 +110,7 @@ class HighLevel(Node):
         for data in self.datas:
             info = self[data].get_info()
             for key in list(info):
-                all_info[f"{data}__" + key] = info[key]
+                all_info[f"{data}_" + key] = info[key]
         return all_info
 
     def __copy__(self):
