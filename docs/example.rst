@@ -83,7 +83,6 @@ The graph can now be visualized using:
 The result is shown below:
 
 .. image:: images/visualised_graph1.png
-   :width: 450
 
 The data objects are shown in rectangles, the functions to be computed are presented in oval shapes, while the variables that have not taken a fixed value yet are shown in red diamonds. 
 
@@ -172,7 +171,7 @@ time of the graph for all combinations of alternative options of the variable an
 .. code-block:: python
 
    obj = benchmark(mul, record=True) 
-   for n in [1<<exponent for exponent in range(16)]:
+   for n in for [2**exponent for exponent in range(15)]:
        obj(mat=sp.random(n,n,0.1),vec=np.random.rand(n)).run()
    
 The dataframe can be accessed as shown below:
@@ -189,24 +188,23 @@ The produced dataframe looks like this:
     ==========  ==============  ==============  ============  ============  ============  ==========
       trial_id  which_sparse    mat_shape       mat_dtype     vec_shape     vec_dtype          time
     ==========  ==============  ==============  ============  ============  ============  ==========
-             0  coo             (1, 1)          float64       (1,)          float64       0.0003279
-             1  csc             (1, 1)          float64       (1,)          float64       0.0007483
-             2  csr             (1, 1)          float64       (1,)          float64       0.0012226
-             3  bsr             (1, 1)          float64       (1,)          float64       0.0014047
-             4  coo             (2, 2)          float64       (2,)          float64       0.0006326
+             0  coo             (1, 1)          float64       (1,)          float64       0.0004373
+             1  csc             (1, 1)          float64       (1,)          float64       0.0003272
+             2  csr             (1, 1)          float64       (1,)          float64       0.0004419
+             3  bsr             (1, 1)          float64       (1,)          float64       0.0004452
+             4  coo             (2, 2)          float64       (2,)          float64       0.0002657
            ...  ...             ...             ...           ...           ...           ...
-            59  bsr             (16384, 16384)  float64       (16384,)      float64       7.1622
-            60  coo             (32768, 32768)  float64       (32768,)      float64       2.13661
-            61  csc             (32768, 32768)  float64       (32768,)      float64       37.8039
-            62  csr             (32768, 32768)  float64       (32768,)      float64       37.1632
-            63  bsr             (32768, 32768)  float64       (32768,)      float64       40.3954
+            55  bsr             (8192, 8192)    float64       (8192,)       float64       0.882976
+            56  coo             (16384, 16384)  float64       (16384,)      float64       0.18082
+            57  csc             (16384, 16384)  float64       (16384,)      float64       3.64082
+            58  csr             (16384, 16384)  float64       (16384,)      float64       3.59247
+            59  bsr             (16384, 16384)  float64       (16384,)      float64       4.25281
     ==========  ==============  ==============  ============  ============  ============  ==========
 
 The dataframe can be then used to compare different sizes of inputs for the different alternatives for the variable. One way to do this visually
 is producing a graph like it is shown below:
 
 .. image:: images/plot.png
-   :width: 450
 
 
 Optimize:
@@ -228,7 +226,6 @@ The new link can be observed by running the code:
    visualize(mul)
 
 .. image:: images/visualised_graph2.png
-   :width: 450
 
 In addition, the :code:`bsr` node in the graph needs to be marked as one to be precomputed so that its computation time is not 
 taken into account when the execution of the graph is timed during the tuning of the variable. 
