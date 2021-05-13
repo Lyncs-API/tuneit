@@ -58,7 +58,7 @@ def test_optuna_sampler():
     # test get_study function
     study = obj_A.get_study()
     assert isinstance(study, Study)
-    name=obj_A.tunable.get_info()
+    name = obj_A.tunable.get_info()
     name["callback"] = obj_A.callback
     assert study.study_name == md5(dumps(name)).hexdigest()
     assert [*study.user_attrs.keys()] == ["callback"]
