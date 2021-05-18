@@ -42,10 +42,7 @@ class OptunaSampler:
 
         self.callback = callback
 
-        if n_trials:
-            self.n_trials = n_trials
-        else:
-            self.n_trials = 1  # default
+        self.n_trials = n_trials or 1
 
         self.storage = storage
 
