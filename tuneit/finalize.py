@@ -105,12 +105,13 @@ class HighLevel(Node):
 
         return matches[0]
 
-    def get_info(self):
+    def get_info(self, short=False):
         all_info = {}
         for data in self.datas:
             info = self[data].get_info()
             for key in list(info):
-                all_info[f"{data}_" + key] = info[key]
+                name = data[: data.rfind("-")] if short else data
+                all_info[f"{name}_{key}"] = info[key]
         return all_info
 
     def __copy__(self):
