@@ -2,7 +2,9 @@
 High Level vision of Tunable object
 """
 
-__all__ = ["finalize"]
+__all__ = [
+    "finalize",
+]
 
 from .graph import Node, Key, Graph
 from .variable import Variable
