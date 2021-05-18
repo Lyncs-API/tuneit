@@ -86,12 +86,11 @@ class Sampler:
         if value is False:
             self._trials = None
         elif value is True:
-            data_keys = [
-                key[: key.rfind("-")] + key[key.rfind("_") :]
-                for key in list(self.tunable.get_info().keys())
-            ]
             self._trials = pd.DataFrame(
-                columns=["trial_id"] + list(self.headers)[:-1] + data_keys + ["time"]
+                columns=["trial_id"]
+                + list(self.headers)[:-1]
+                + list(self.tunable.get_info(short=True).keys())
+                + ["time"]
             )
         else:
             raise TypeError("Value is neither true or false")
@@ -174,8 +173,8 @@ class Sampler:
                 ]
             yield params, result
 
-    def run(self):
-        return tuple(self)
+    def run(self, *args, **kwargs):
+        return tuple(self(*args, **kwargs))
 
     def _perform_call(self, graph):
         value = graph.compute(**self.compute_kwargs)
