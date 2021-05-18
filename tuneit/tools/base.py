@@ -14,7 +14,6 @@ from itertools import product
 from tabulate import tabulate
 from ..finalize import finalize
 from lyncs_utils import isiterable
-import pandas as pd
 
 
 class Sampler:
@@ -81,6 +80,10 @@ class Sampler:
 
     @record.setter
     def record(self, value):
+        try:
+            import pandas as pd
+        except:
+            raise ImportError("pandas is a requirement for record")
         if value == self.record:
             return
         if value is False:
