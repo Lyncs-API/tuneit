@@ -1,13 +1,11 @@
 .. Tunable documentation master file.
 
-Tuneit: 
-=======
+Tuneit: optimize, benchmark and crosscheck
+==========================================
 
 Welcome to Tuneit's documentation!
 ===================================
 
-..
-   title needs to change
 
 Basic Concepts
 --------------
@@ -17,11 +15,11 @@ The Tuneit package works with computational graphs, which have two main phases:
   
   * Variables: they are represented using diamonds. The outline is red in case the variable does not have a value yet and green in case the                 variable has been assigned a fixed value.
   * Operations: they are represented using oval shapes.
-  * Data: All data objects are represented with rectangles. Most of them represent data inputs, except for the last node in the graph, which
-          is represents the data output.
-          
-  .. 
-     add image images/ 
+  * Data: All data objects are represented using rectangles. Most of them represent data inputs, except for the last node in the graph, which represents the data output.
+          |pic|
+
+.. |pic| image:: images/computational_graph.png
+    :width: 500
 
 - A finalization phase. After the graph is finalized, a number of operations (described in the next section) can be performed on it.
 
