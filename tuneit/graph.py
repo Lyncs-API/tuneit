@@ -300,6 +300,14 @@ def visualize(graph, start=None, end=None, groups=None, **kwargs):
                 continue
             dot.edge(str(dep), str(key))
 
+        if key == end:
+            dot.node(
+                "output",
+                label="output",
+                shape="rectangle",
+            )
+            dot.edge(str(key), "output")
+
     if groups is not None:
         for (i, group) in enumerate(groups):
             with dot.subgraph(name=f"cluster_{i}") as c:
