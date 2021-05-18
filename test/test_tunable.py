@@ -29,9 +29,6 @@ def test_object():
     one = Object(1, deps=zero)
 
 
-#   assert zero.key in one.dependencies
-
-
 def test_function():
     with raises(TypeError):
         function(1)
@@ -45,8 +42,6 @@ def test_function():
 
     one = Object(1)
     fnc = Function(str, args=zero, kwargs={"one": one})
-    #   assert zero.key in fnc.dependencies
-    #   assert one.key in fnc.dependencies
 
     lst = Object([1, 2]).tunable()
     lst = lst.append(3)
