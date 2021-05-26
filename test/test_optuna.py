@@ -1,19 +1,29 @@
+import pytest
+import sys
 from tuneit import *
 import numpy
-from tuneit.tools.time import Time, default_timer
-from tuneit.tools.optuna import OptunaSampler
-import pytest
-import optuna
-from optuna.trial import Trial
-from optuna.trial import create_trial
-from optuna.distributions import CategoricalDistribution
-from optuna.trial import TrialState
-from tuneit.finalize import HighLevel
-from optuna.study import Study
 from hashlib import md5
 from dill import dumps
+from tuneit.tools.time import Time, default_timer
+
+try:
+    from tuneit.tools.optuna import OptunaSampler
+    import optuna
+    from optuna.trial import Trial
+    from optuna.trial import create_trial
+    from optuna.distributions import CategoricalDistribution
+    from optuna.trial import TrialState
+    from tuneit.finalize import HighLevel
+    from optuna.study import Study
+
+    skip_optuna = False
+except ImportError:
+    skip_optuna = True
+
+skip_optuna = pytest.mark.skipif(skip_optuna, reason="optuna is not installed")
 
 
+@skip_optuna
 def test_optuna_sampler():
     # simple example to use in tests
     # building a graph with variables for sorting (preprocessing) and searching to be tuned:
