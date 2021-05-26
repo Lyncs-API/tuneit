@@ -10,6 +10,7 @@ __all__ = [
 from timeit import timeit
 from .base import sample
 from .tuner import tune
+from ..finalize import HighLevel
 
 
 class Time(float):
@@ -107,3 +108,6 @@ def optimise(tunable, timer=default_timer, timer_kwargs=None, **kwargs):
 
 
 optimize = optimise
+HighLevel.benchmark = benchmark
+HighLevel.optimize = optimise
+HighLevel.optimize = HighLevel.optimise

@@ -5,7 +5,7 @@ Function for checking the results
 import operator
 from numpy import allclose
 from .base import sample
-from ..finalize import finalize
+from ..finalize import finalize, HighLevel
 
 __all__ = [
     "crosscheck",
@@ -56,3 +56,6 @@ def crosscheck(
         label=label,
         **kwargs
     )
+
+
+HighLevel.crosscheck = crosscheck
