@@ -228,6 +228,7 @@ class alternatives(dict):
         self.default = next(iter(self))
         if name:
             self.name = name
+            self._name_given = True
         self._var_name = var_name
         self._closed = False
 
@@ -246,7 +247,7 @@ class alternatives(dict):
             raise KeyError(f"{key} unknown alternative")
         self._default = key
         if not self._name_given:
-            self.__name__ = key
+            self.name = key
 
     def add(self, fnc):
         "Adds a value to the alternatives"
@@ -271,7 +272,6 @@ class alternatives(dict):
     @name.setter
     def name(self, key):
         self.__name__ = key
-        self._name_given = True
 
     def __call__(self, *args, _key=None, **kwargs):
         if len(args) == 1 and callable(args[0]) and not self._closed:
