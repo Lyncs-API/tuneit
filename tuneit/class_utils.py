@@ -246,7 +246,7 @@ class alternatives(dict):
             raise KeyError(f"{key} unknown alternative")
         self._default = key
         if not self._name_given:
-            self.name = key
+            self.__name__ = key
 
     def add(self, fnc):
         "Adds a value to the alternatives"
