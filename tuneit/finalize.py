@@ -188,7 +188,7 @@ class HighLevel(Node):
         kwargs.setdefault("graph", self.graph)
         return compute(self.value, **kwargs)
 
-    def remove(self, nodes):
+    def remove(self, *nodes):
         "Removes the list of nodes from the graph"
         for node in nodes:
             del self.graph[node]
@@ -226,7 +226,7 @@ class HighLevel(Node):
         )
         new_graph = self.copy(reset=True)
         nodes.remove(last_node)
-        new_graph.remove(nodes)
+        new_graph.remove(*nodes)
         new_graph[last_node] = new_node
         return new_graph
 
