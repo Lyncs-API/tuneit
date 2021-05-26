@@ -9,10 +9,11 @@ Basic Concepts
 The Tuneit package works with computational graphs, which have two main phases:
 
 - A construction phase, where the graph is being built. Every operation that needs to be performed will be added to the graph as node along with all the variables and data input and output. Each type of node is visualised differently in the graph as it is shown below:
-  
+    |pic1|
+   
   * **Variables:** they are represented using diamonds. The outline is red in case the variable does not have a value yet and green in case                    the variable has been assigned a fixed value.
   * **Operations:** they are represented using oval shapes.
-  * **Data:** All data objects are represented using rectangles. Most of them represent data inputs, except for the last node in the graph, which represents the data output.:: 
+  * **Data:** All data objects are represented using rectangles. Most of them represent data inputs, except for the last node in the graph, which represents the data output. 
       .. code-block:: python
 
           from tuneit import *
@@ -25,11 +26,12 @@ The Tuneit package works with computational graphs, which have two main phases:
           axpy = a * x + y
           visualize(axpy)
 
-      |pic|
+      |pic2|
 
-
+.. |pic1| image:: images/computational_graph1.png
+           :width: 500
     
-.. |pic| image:: images/computational_graph.png
+.. |pic2| image:: images/computational_graph2.png
 
 - A finalization phase. After the graph is finalized, a number of operations (described in the next section) can be performed on it.
 
