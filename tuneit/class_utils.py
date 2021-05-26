@@ -222,9 +222,12 @@ class alternatives(dict):
 
         return kwargs
 
-    def __init__(self, var_name=None, *args, **kwargs):
+    def __init__(self, *args, name=None, var_name=None, **kwargs):
         super().__init__(**self.args_to_kwargs(*args), **kwargs)
+        self._name_given = False
         self.default = next(iter(self))
+        if name:
+            self.name = name
         self._var_name = var_name
         self._closed = False
 
@@ -242,8 +245,8 @@ class alternatives(dict):
         if key not in self:
             raise KeyError(f"{key} unknown alternative")
         self._default = key
-        wraps(self[key])(self)
-        self.__name__ = key
+        if not self._name_given:
+            self.name = key
 
     def add(self, fnc):
         "Adds a value to the alternatives"
@@ -260,6 +263,15 @@ class alternatives(dict):
     @var_name.setter
     def var_name(self, key):
         self._var_name = key
+
+    @property
+    def name(self):
+        return self.__name__
+
+    @name.setter
+    def name(self, key):
+        self.__name__ = key
+        self._name_given = True
 
     def __call__(self, *args, _key=None, **kwargs):
         if len(args) == 1 and callable(args[0]) and not self._closed:
