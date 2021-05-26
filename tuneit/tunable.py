@@ -127,12 +127,6 @@ class Object:
         "Returns a tunable object"
         return Tunable(self)
 
-    @property
-    def dependencies(self):
-        "Returns the list of dependencies for the Object"
-        raise NotImplementedError
-        return Node(self.tunable()).dependencies
-
     def copy(self, **kwargs):
         "Returns a copy of self"
         # TODO: improve copy.. it should copy automatically all the data
