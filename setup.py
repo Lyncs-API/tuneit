@@ -7,7 +7,6 @@ requirements = [
     "tabulate",
     "numpy",
     "lyncs_utils",
-    "pandas",
 ]
 
 extras = {
@@ -16,6 +15,7 @@ extras = {
     ],
     "test": ["pytest", "pytest-cov"],
     "optuna": ["optuna"],
+    "record": ["pandas"],
 }
 
 setup(
