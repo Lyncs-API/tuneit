@@ -110,4 +110,4 @@ def optimise(tunable, timer=default_timer, timer_kwargs=None, **kwargs):
 optimize = optimise
 HighLevel.benchmark = benchmark
 HighLevel.optimize = optimise
-HighLevel.optimize = HighLevel.optimise
+HighLevel.optimise = optimise
