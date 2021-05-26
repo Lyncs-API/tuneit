@@ -6,7 +6,7 @@ __all__ = [
     "finalize",
 ]
 
-from .graph import Node, Key, Graph
+from .graph import Node, Key, Graph, visualize
 from .variable import Variable
 from .tunable import Object, Function, compute, Data, data
 
@@ -302,3 +302,5 @@ class HighLevel(Node):
         if self.consecutive(nodes) and res:
             return last_node, True
         return last_node, False
+
+    visualize = visualize
