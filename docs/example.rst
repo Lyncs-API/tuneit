@@ -58,7 +58,7 @@ Furthermore, we define a random sparse matrix and a random vector that will be u
 .. code-block:: python
 
     matrix_value = sp.random(100,100,0.1)
-    vector_value = np.random.rand(100)
+    vector_value = np.random.rand(100,1)
 
 The final graph :code:`mul` that expresses the multiplication between the vector :code:`vec` and the sparse matrix :code:`mat` is created 
 as shown below:
