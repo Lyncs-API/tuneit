@@ -6,11 +6,13 @@ on:
   pull_request:
     branches:
       - "main"
+      - "master"
     paths:
       - "lyncs*/__init__.py"
   push:
     branches:
       - "main"
+      - "master"
 
 jobs:
   build-n-publish:
