@@ -1,4 +1,4 @@
-"A Python tool for optimizing and crosschecking calculations"
+"A Python tool for optimizing, benchmarking and crosschecking calculations"
 
 __version__ = "0.1.0"
 
