@@ -49,7 +49,9 @@ The Tuneit package works with computational graphs, which have two main phases:
 
 ## Example
 
-A small example constructing a graph for the multiplication of a matrix and a vector:
+This section contains a small example that shows the construction of a graph for the multiplication of a matrix and a vector.
+
+More details about this example can be found in the [example page](https://tuneit.readthedocs.io/en/latest/example.html) of the tuneit documentation.
 
 ````````````
 @alternatives( 
@@ -68,7 +70,11 @@ mul=mat*vec
 mul=finalize(mul)
 
 mul.visualize()
+```````````````
+The result of the `visualize()` function:
+![visualised graph](docs/images/visualised_graph1.png)
 
+```````````````
 matrix_value = sp.random(100,100,0.1)
 vector_value = np.random.rand(100,1)
 
@@ -77,8 +83,18 @@ out = mul(mat=matrix_value, vec=vector_value)
 
 # for comparing the options of the variable which_matrix:
 mul.benchmark(mat=matrix_value,vec=vector_value)
-````````````
+```````````````
+The result of the `benchmark()` function:
 
+| which_matrix     | Time           |
+| :--------------: | :------------: |
+| coo              | 475.300 usec   |
+| csc              | 1.076 msec     |
+| csr              | 1.478 msec     |
+| bsr              | 845.800 usec   |
+| matrix           | 803.200 usec   |
+
+<br/>
 
 ## Acknowledgments
 
