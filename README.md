@@ -72,6 +72,7 @@ mul=finalize(mul)
 mul.visualize()
 ```````````````
 The result of the `visualize()` function:
+<br/>
 ![visualised graph](docs/images/visualised_graph1.png)
 
 ```````````````
