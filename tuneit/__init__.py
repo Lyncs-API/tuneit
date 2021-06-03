@@ -1,6 +1,6 @@
 "A Python tool for optimizing and crosschecking calculations"
 
-__version__ = "0.0.4"
+__version__ = "0.1.0"
 
 from .graph import *
 from .tunable import *
