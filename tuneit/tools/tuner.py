@@ -51,11 +51,13 @@ class Tuner(HighLevel, attrs=["tuner_kwargs"]):
     def get_sampler_kwargs(self):
         "Returns the appropriate arguments for the selected sampler"
         sampler_kwargs = {}
+        for d in self.datas:
+            y = d.split("-")[0]
+            if y in list(self.tuner_kwargs.keys()):
+                sampler_kwargs[y] = self.tuner_kwargs.get(y, None)
         if self.get_sampler() is OptunaSampler:
-            sampler_kwargs = {
-                "callback": self.tuner_kwargs.get("callback", None),
-                "storage": "sqlite:///example.db",
-            }
+            sampler_kwargs["callback"] = self.tuner_kwargs.get("callback", None)
+            sampler_kwargs["storage"] = "sqlite:///example.db"
         return sampler_kwargs
 
 
