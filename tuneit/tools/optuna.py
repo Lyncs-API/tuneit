@@ -68,7 +68,7 @@ class OptunaSampler:
     def compute(self, **kwargs):
         "Returns the value of the graph after completing the set number of trials for the tuning of the parameters"
         self.get_study().optimize(
-            lambda trial: self.objective(trial, **kwargs),
+            lambda trial: self.objective(trial, **{**self.compute_kwargs, **kwargs}),
             self.n_trials,
             catch=self.catches,
         )
@@ -78,7 +78,7 @@ class OptunaSampler:
 
     def _call_wrapper(self, graph, **kwargs):
         "Computes and returns the value of the graph"
-        self._value = graph.compute(**kwargs)
+        self._value = graph(**kwargs)
         return self._value
 
     def objective(self, trial, **kwargs):
