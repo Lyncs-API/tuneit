@@ -1,11 +1,16 @@
 from tuneit.graph import visualize
 from tuneit.tunable import *
 from tuneit.variable import *
+from tuneit.class_utils import *
 from tuneit.tunable import Tunable
 from tuneit.finalize import finalize
 from pytest import raises
 from tuneit.variable import Variable
 from tuneit.finalize import HighLevel
+import testfixtures
+import pickle
+import scipy.sparse as sp
+import scipy as s
 
 
 def test_finalize():
@@ -108,3 +113,35 @@ def test_finalize():
     assert set(
         [dep for node in nodes for dep in node.first_dependencies if dep not in nodes]
     ) == set(list(merged_graph.get_node(last_node).first_dependencies))
+
+
+def test_pickle():
+    # HighLevel
+    x = data()
+    y = data()
+    z = x * y
+    z = finalize(z)
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # HighLevel object with alternatives: alternatives is not pickle-able
+
+    # @alternatives(
+    # coo = sp.coo_matrix,
+    # csc = sp.csc_matrix,
+    # csr = sp.csr_matrix,
+    # bsr = sp.bsr_matrix
+    # )
+    # def matrix(mat):
+    #    return s.matrix(mat.todense())
+
+    # mat=data(info=["shape","dtype"])
+    # vec=data(info=["shape","dtype"])
+    # mat=matrix(mat)
+    # mul=mat*vec
+    # mul = finalize(mul)
+
+    # a = pickle.dumps(mul)
+    # b = pickle.loads(a)
+    # assert testfixtures.compare(mul,b, strict=True) is None

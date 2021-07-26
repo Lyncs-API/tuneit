@@ -1,5 +1,7 @@
 import pytest
 from tuneit.graph import Graph, Node, Key
+import pickle
+import testfixtures
 
 
 class String(str):
@@ -65,3 +67,23 @@ def test_dict_methods():
 
     b.update(a)
     assert a == b
+
+
+def test_pickle():
+    # Key
+    z = Key("z")
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # Node
+    z = Node("letter", "z")
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # Graph
+    z = Graph({"letter": "z", "number": 1})
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
