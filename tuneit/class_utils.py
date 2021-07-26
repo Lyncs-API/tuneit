@@ -285,6 +285,8 @@ class alternatives(dict):
         return function(
             self,
             *args,
-            _key=variable(self.keys(), default=self.default, label=self.var_name),
+            _key=variable(
+                tuple(self.keys()), default=self.default, label=self.var_name
+            ),
             **kwargs,
         )
