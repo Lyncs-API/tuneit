@@ -84,6 +84,9 @@ class Graph(metaclass=CastableType, attrs=["backend"]):
         "Shallow copy of a Graph"
         return Graph(self.backend.copy())
 
+    def __reduce__(self):
+        return type(self), (self.backend,)
+
 
 class Key(metaclass=CastableType, attrs=["key"]):
     "Namespace for the keys of tunable objects"
@@ -110,6 +113,9 @@ class Key(metaclass=CastableType, attrs=["key"]):
     def __hash__(self):
         return hash(self.key)
 
+    def __reduce__(self):
+        return type(self), (self.key,)
+
 
 class Node(Graph, Key, bind=False):
     """
@@ -133,6 +139,12 @@ class Node(Graph, Key, bind=False):
                 Key.__cast__(part)
             except TypeError:
                 pass
+
+    def __reduce__(self):
+        return type(self), (
+            self.key,
+            self.graph,
+        )
 
     @property
     def key(self):
