@@ -65,20 +65,28 @@ class OptunaSampler:
     def catches(self):
         return (Exception,)
 
-    def compute(self, **kwargs):
+    def compute(self, count=0, **kwargs):
         "Returns the value of the graph after completing the set number of trials for the tuning of the parameters"
-        self.get_study().optimize(
-            lambda trial: self.objective(trial, **{**self.compute_kwargs, **kwargs}),
-            self.n_trials,
-            catch=self.catches,
-        )
-        value = self._value
-        del self._value
-        return value
+        try:
+            self.get_study().optimize(
+                lambda trial: self.objective(
+                    trial, **{**self.compute_kwargs, **kwargs}
+                ),
+                self.n_trials,
+                catch=self.catches,
+            )
+            value = self._value
+            del self._value
+            return value
+        except:
+            if count < 10:
+                return self.compute(count=count + 1, **kwargs)
+            else:
+                raise RuntimeError("Trial failed too many times")
 
     def _call_wrapper(self, graph, **kwargs):
         "Computes and returns the value of the graph"
-        self._value = graph(**kwargs)
+        self._value = graph(compute_kwargs=kwargs)
         return self._value
 
     def objective(self, trial, **kwargs):
