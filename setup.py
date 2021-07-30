@@ -13,7 +13,7 @@ extras = {
     "graph": [
         "graphviz",
     ],
-    "test": ["pytest", "pytest-cov"],
+    "test": ["pytest", "pytest-cov","testfixtures"],
     "optuna": ["optuna"],
     "record": ["pandas"],
 }
