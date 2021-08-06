@@ -24,6 +24,10 @@ from typing import Any
 from varname import varname as _varname, VarnameRetrievingError
 from .graph import Graph, Node, Key
 from lyncs_utils import isiterable
+import multiprocessing
+from time import time
+from contextlib import contextmanager
+import logging
 
 
 def varname(caller=1, default=None):
@@ -34,8 +38,23 @@ def varname(caller=1, default=None):
         return default
 
 
-def compute(obj, **kwargs):
+def compute(obj, timeout=None, **kwargs):
     "Compute the value of a tunable object"
+    if timeout:
+        raise NotImplementedError
+        kwargs["queue"] = multiprocessing.Queue()
+        p = multiprocessing.Process(target=compute, args=(obj,), kwargs=kwargs)
+        p.start()
+        p.join(timeout)
+        if p.exitcode is None:
+            p.terminate()
+            raise RuntimeError("Timeout")
+        if p.exitcode < 0:
+            raise RuntimeError(f"The process was terminated by signal {abs(exitcode)}.")
+        if not kwargs["queue"].empty():
+            obj = kwargs["queue"].get()
+        return obj
+
     kwargs.setdefault("maxiter", 3)
     if kwargs["maxiter"] <= 0:
         return obj
@@ -43,12 +62,10 @@ def compute(obj, **kwargs):
         kwargs.setdefault("graph", Node(obj).graph)
     if isinstance(obj, Key) and not isinstance(obj, Node):
         obj = kwargs["graph"][obj].value
-    try:
+    if hasattr(obj, "__compute__"):
         obj = obj.__compute__(**kwargs)
         kwargs["maxiter"] -= 1
         obj = compute(obj, **kwargs)
-    except AttributeError:
-        pass
     return obj
 
 
@@ -300,8 +317,17 @@ class Function(Object):
         cmpt = lambda obj: compute(obj, **kwargs)
         fnc = cmpt(super().__compute__(**kwargs))
         args = tuple(map(cmpt, self.args))
+        context = kwargs.get("context", default_context)
+        log = kwargs.get("log", False)
         kwargs = dict(zip(self.kwargs.keys(), map(cmpt, self.kwargs.values())))
-        res = fnc(*args, **kwargs)
+        if log:
+            logging.basicConfig(level=logging.INFO)
+        else:
+            logging.basicConfig(level=logging.WARNING)
+        if context is None:
+            context = empty_context
+        with context(self.key):
+            res = fnc(*args, **kwargs)
         if res is None:
             if ismethod(fnc) or fnc is setattr:
                 return args[0]
@@ -354,6 +380,18 @@ def callattr(self, key, *args, **kwargs):
     return getattr(self, key)(*args, **kwargs)
 
 
+@contextmanager
+def default_context(key):
+    start = time()
+    yield
+    logging.info(f"{key}:{time()-start}")
+
+
+@contextmanager
+def empty_context(key):
+    yield
+
+
 class Tunable(Node, bind=False):
     "A class that turns any operation into a graph node"
 
@@ -376,11 +414,15 @@ class Tunable(Node, bind=False):
             and len(tmp.args) == 2
             and not tmp.kwargs
         ):
-            value = Function(callattr, args=tmp.args + args, kwargs=kwargs)
             graph = Graph(self).copy()
             del graph[Key(self)]
-            graph[value.key] = value
-            return Tunable(graph[value.key])
+            node = graph[tmp.args[0]]
+            return function(callattr, node, tmp.args[1], *args, **kwargs)
+            # value = Function(callattr, args=tmp.args + args, kwargs=kwargs)
+            # graph = Graph(self).copy()
+            # del graph[Key(self)]
+            # graph[value.key] = value
+            # return Tunable(graph[value.key])
         return function(Tunable(Node(self).copy()), *args, **kwargs)
 
     def __repr__(self):
@@ -393,6 +435,9 @@ class Tunable(Node, bind=False):
 
     def __getstate__(self):
         return Node(self).key
+
+    def __reduce__(self):
+        return type(self), (Node(self),)
 
     def __compute__(self, **kwargs):
         # pylint: disable=W0613
