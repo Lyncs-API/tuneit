@@ -240,7 +240,7 @@ The only thing left to do is to actually tune the variable by calling the follow
 
 .. code-block:: python
 
-   mul.optimize(mat=matrix_value,vec=vector_value,sampler='optuna')()
+   mul.optimize(sampler='optuna')(mat=matrix_value,vec=vector_value)
 
 A tuner object has been created by calling the :code:`optimize()` function on the graph to be tuned and passing it the sampler to be used.
 The :code:`optuna` package is one of the options that are offered by :code:`tuneit` to be used as a sampler.
