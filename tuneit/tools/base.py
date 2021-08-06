@@ -13,6 +13,7 @@ from functools import reduce
 from itertools import product
 from tabulate import tabulate
 from ..finalize import finalize
+from lyncs_utils import isiterable
 
 
 class Sampler:
@@ -26,6 +27,8 @@ class Sampler:
         callback=None,
         callback_calls=False,
         label=None,
+        store_value=False,
+        record=False,
         **kwargs,
     ):
         "Initializes the tunable object and the variables"
@@ -41,8 +44,12 @@ class Sampler:
             self.label = label
 
         if variables:
+            if isinstance(variables, str):
+                variables = [variables]
+            elif not isiterable(variables):
+                variables = [variables]
             self.variables = tuple(
-                str(tunable.get_variable(var).key) for var in variables
+                str(self.tunable.get_variable(var).key) for var in variables
             )
 
             set_vars = set(self.variables)
@@ -61,6 +68,39 @@ class Sampler:
 
         if n_samples:
             self.n_samples = n_samples
+
+        self.store_value = store_value
+
+        self._trials = None
+        self.record = record
+
+    @property
+    def record(self):
+        return self.trials is not None
+
+    @record.setter
+    def record(self, value):
+        try:
+            import pandas as pd
+        except:
+            raise ImportError("pandas is a requirement for record")
+        if value == self.record:
+            return
+        if value is False:
+            self._trials = None
+        elif value is True:
+            self._trials = pd.DataFrame(
+                columns=["trial_id"]
+                + list(self.headers)[:-1]
+                + list(self.tunable.get_info(short=True).keys())
+                + ["time"]
+            )
+        else:
+            raise TypeError("Value is neither true or false")
+
+    @property
+    def trials(self):
+        return self._trials
 
     @property
     def max_samples(self):
@@ -120,12 +160,51 @@ class Sampler:
                 tmp.fix(var, val)
             try:
                 if self.callback_calls:
-                    result = self.callback(lambda: tmp.compute(**self.compute_kwargs))
+                    result = self.callback(lambda: self._perform_call(tmp))
                 else:
-                    result = self.callback(tmp.compute(**self.compute_kwargs))
+                    result = self.callback(self._perform_call(tmp))
             except Exception as err:
                 result = err
+
+            if self.record:
+                index = len(self.trials)
+                self.trials.loc[index] = [
+                    index,
+                    *list(params),
+                    *list(self.tunable.get_info().values()),
+                    result,
+                ]
             yield params, result
+
+    def run(self, *args, **kwargs):
+        return tuple(self(*args, **kwargs))
+
+    def _perform_call(self, graph):
+        value = graph.compute(**self.compute_kwargs)
+        if self.store_value:
+            self._value = value
+        return value
+
+    def __call__(self, *args, **kwargs):
+        "kwargs are data input of the graph"
+        if args:
+            raise ValueError("args not supported, please pass them as kwargs")
+
+        for key, val in kwargs.items():
+            try:
+                self.tunable.get_data(key).set(val)
+                continue
+            except KeyError:
+                pass
+            self.tunable.fix(key, val)
+
+        return self
+
+    @property
+    def value(self):
+        if not hasattr(self, "_value") or not self.store_value:
+            return self._perform_call(self.tunable.copy())
+        return self._value
 
     @property
     def label(self):
@@ -150,7 +229,7 @@ class Sampler:
         return self.tabulate(tablefmt="html")
 
 
-def sample(tunable, *variables, samples=100, **kwargs):
+def sample(tunable, variables=None, samples=100, **kwargs):
     """
     Samples the value of the tunable object
 

@@ -4,6 +4,8 @@ from tuneit.variable import *
 from tuneit.tunable import Tunable
 from tuneit.finalize import finalize
 from pytest import raises
+import pickle
+import testfixtures
 
 
 def test_variable():
@@ -45,9 +47,6 @@ def test_variable():
     with raises(RuntimeError):
         d.value = 3
 
-    d = Variable(range(10))
-    d.value = Variable(range(10))
-
     d = Permutation((1, 2, 3))
     d.value = (3, 2, 1)
     assert d.size == 6
@@ -74,3 +73,11 @@ def test_copy():
     assert not var2.fixed
     assert var.fixed
     assert var.uid != var2.uid
+
+
+def test_pickle():
+    # Variable
+    z = Variable([1, 2])
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None

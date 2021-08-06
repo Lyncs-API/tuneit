@@ -1,12 +1,11 @@
 """
 Function for checking the results
 """
-# pylint: disable=C0303,C0330
 
 import operator
 from numpy import allclose
 from .base import sample
-from ..finalize import finalize
+from ..finalize import finalize, HighLevel
 
 __all__ = [
     "crosscheck",
@@ -15,7 +14,7 @@ __all__ = [
 
 def crosscheck(
     tunable,
-    *variables,
+    variables=None,
     comparison=allclose,
     samples=None,
     reference=None,
@@ -40,13 +39,23 @@ def crosscheck(
         Variables passed to the compute function. See help(tunable.compute)
     """
     if reference is None:
-        reference = finalize(tunable).copy().compute(**kwargs)
+        reference = []
+    else:
+        reference = [reference]
+
+    def get_ref(res):
+        if len(reference) == 0:
+            reference.append(res)
+        return reference[0]
 
     return sample(
         tunable,
-        *variables,
-        callback=lambda res: comparison(reference, res),
+        variables=variables,
+        callback=lambda res: comparison(get_ref(res), res),
         samples=samples,
         label=label,
         **kwargs
     )
+
+
+HighLevel.crosscheck = crosscheck

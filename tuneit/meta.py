@@ -128,8 +128,10 @@ class CastableType(type):
         values = dict()
         getattr(cls, "__values__").__set__(obj, values)
 
-        if len(args) == 1 and (
-            isinstance(args[0], cls) or issubclass(cls, type(args[0]))
+        if (
+            len(args) == 1
+            and not kwargs
+            and (isinstance(args[0], cls) or issubclass(cls, type(args[0])))
         ):
             for attr in obj.__attrs__:
                 values[attr] = (
@@ -143,7 +145,7 @@ class CastableType(type):
             try:
                 obj.__init__(*args, **kwargs)
             except AttributeError:
-                pass
+                raise
 
         return obj
 

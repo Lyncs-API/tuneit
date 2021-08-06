@@ -3,10 +3,14 @@
 
 __all__ = [
     "benchmark",
+    "optimize",
+    "optimise",
 ]
 
 from timeit import timeit
 from .base import sample
+from .tuner import tune
+from ..finalize import HighLevel
 
 
 class Time(float):
@@ -25,21 +29,22 @@ class Time(float):
     __repr__ = __str__
 
 
-def default_timer(fnc, number=100):
-    return timeit(fnc, number=100) / number
+def default_timer(fnc, number=1):
+    return timeit(fnc, number=number) / number
 
 
 def benchmark(
     tunable,
-    *variables,
+    variables=None,
     timer=default_timer,
     timer_kwargs=None,
     samples=None,
     label="Time",
+    record=False,
     **kwargs,
 ):
     """
-    Crosscheck the result of tunable against the reference.
+    Samples the execution time.
 
     Parameters
     ----------
@@ -55,16 +60,54 @@ def benchmark(
     timer_kwargs: dict
         Arguments passed to the timer. For default timer:
         - number: (int) number of iterations
+
     kwargs: dict
         Variables passed to the compute function. See help(tunable.compute)
     """
 
     return sample(
         tunable,
-        *variables,
+        variables=variables,
         callback=lambda fnc: Time(timer(fnc, **(timer_kwargs or {}))),
         callback_calls=True,
         samples=samples,
         label=label,
+        record=record,
         **kwargs,
     )
+
+
+def optimise(tunable, timer=default_timer, timer_kwargs=None, **kwargs):
+    """
+    Optimizes the execution time changing the tunable parameters.
+
+    Parameters
+    ----------
+    comparison: callable (default = numpy.allclose)
+        The function to use for comparison. It is called as fnc(reference, value)
+        and should return a value from 0 (False) to 1 (True).
+    reference: Any
+        The reference value. If None, than the default values are used to produce the result.
+    variables: list of str
+        Set of variables to sample.
+    n_trials: int
+        The number of trials per call.
+    timer_kwargs: dict
+        Arguments passed to the timer. For default timer:
+        - number: (int) number of iterations
+    kwargs: dict
+        Variables passed to the compute function. See help(tunable.compute)
+    """
+
+    return tune(
+        tunable,
+        callback=lambda fnc: Time(timer(fnc, **(timer_kwargs or {}))),
+        callback_calls=True,
+        **kwargs,
+    )
+
+
+optimize = optimise
+HighLevel.benchmark = benchmark
+HighLevel.optimize = optimise
+HighLevel.optimise = optimise

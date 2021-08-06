@@ -146,7 +146,13 @@ class Variable(Object):
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="diamond", color="green" if self.fixed else "red")
+        attrs = super().__dot_attrs__
+        attrs["shape"] = "diamond"
+        if self.fixed:
+            attrs["color"] = "green"
+        else:
+            attrs["color"] = "red"
+        return attrs
 
     def copy(self, reset=False, reset_value=False, **kwargs):
         "Returns a copy of self"

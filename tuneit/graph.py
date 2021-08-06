@@ -22,11 +22,18 @@ class Graph(metaclass=CastableType, attrs=["backend"]):
         self.backend = {} if graph is None else dict(graph)
 
     def __getitem__(self, key):
+        if isinstance(key, int):
+            return self[list(self.keys())[key]]
         if isinstance(key, Key):
             key = Key(key).key
         node = Node(self)
         Key(node).key = key
         return node
+
+    def index(self, key):
+        if isinstance(key, Key):
+            key = Key(key).key
+        return list(self.keys()).index(key)
 
     def __setitem__(self, key, value):
         if isinstance(key, Key):
@@ -77,6 +84,9 @@ class Graph(metaclass=CastableType, attrs=["backend"]):
         "Shallow copy of a Graph"
         return Graph(self.backend.copy())
 
+    def __reduce__(self):
+        return type(self), (self.backend,)
+
 
 class Key(metaclass=CastableType, attrs=["key"]):
     "Namespace for the keys of tunable objects"
@@ -103,6 +113,9 @@ class Key(metaclass=CastableType, attrs=["key"]):
     def __hash__(self):
         return hash(self.key)
 
+    def __reduce__(self):
+        return type(self), (self.key,)
+
 
 class Node(Graph, Key, bind=False):
     """
@@ -110,12 +123,15 @@ class Node(Graph, Key, bind=False):
     """
 
     def __init__(self, key, value=None):
-        Graph.__init__(self.graph, join_graphs(value))
+        if isinstance(key, Graph):
+            Graph.__init__(self.graph, join_graphs(key))
+        else:
+            Graph.__init__(self.graph, join_graphs(value))
         Key.__init__(self.key, key)
 
         if key not in self.graph:
             self.graph[key] = value
-        elif not isinstance(value, Graph) or self == value:
+        elif value and (not isinstance(value, Graph) or self == value):
             raise KeyError("%s already in graph and the value will not be changed")
 
         for part in self:
@@ -123,6 +139,12 @@ class Node(Graph, Key, bind=False):
                 Key.__cast__(part)
             except TypeError:
                 pass
+
+    def __reduce__(self):
+        return type(self), (
+            self.key,
+            self.graph,
+        )
 
     @property
     def key(self):
@@ -193,8 +215,10 @@ class Node(Graph, Key, bind=False):
     def first_dependencies(self):
         "Iterates over the dependencies"
         for val in self:
-            if isinstance(val, Key):
+            if type(val) == Key:
                 yield Key(val)
+
+    direct_dependencies = first_dependencies
 
     @property
     def dependencies(self):
@@ -202,13 +226,19 @@ class Node(Graph, Key, bind=False):
         deps = [self.key]
         yield deps[0]
         for val in self:
-            if isinstance(val, Key):
+            if not type(val) == Key:
+                continue
+            if str(val) in deps:
+                continue
+            if val in self.graph:
                 val = self.graph[val]
-            if isinstance(val, Node):
-                for dep in Node(val).dependencies:
-                    if dep not in deps:
-                        deps.append(dep)
-                        yield dep
+            else:
+                continue
+
+            for dep in Node(val).dependencies:
+                if dep not in deps:
+                    deps.append(dep)
+                    yield dep
 
     def visualize(self, **kwargs):
         """
@@ -239,7 +269,7 @@ def join_graphs(graphs):
     return Graph()
 
 
-def visualize(graph, start=None, end=None, **kwargs):
+def visualize(graph, start=None, end=None, groups=None, **kwargs):
     "Visualizes the graph returning a dot graph"
     assert isinstance(graph, Graph), "graph must be of type Graph"
 
@@ -265,17 +295,38 @@ def visualize(graph, start=None, end=None, **kwargs):
     dot = default_graph(**kwargs)
 
     for key in keys:
+        i = graph.index(key)
         node = graph[key]
 
         if start and start not in node.dependencies:
             continue
 
-        dot.node(str(key), node.label, **node.dot_attrs)
+        dot.node(
+            str(key),
+            label=f"""<{node.label}<BR /><FONT POINT-SIZE="10">{i}</FONT>>""",
+            **node.dot_attrs,
+        )
 
         for dep in node.first_dependencies:
             if start and start not in graph[dep].dependencies:
                 continue
             dot.edge(str(dep), str(key))
+
+        if key == end:
+            dot.node(
+                "output",
+                label="output",
+                shape="rectangle",
+            )
+            dot.edge(str(key), "output")
+
+    if groups is not None:
+        for (i, group) in enumerate(groups):
+            with dot.subgraph(name=f"cluster_{i}") as c:
+                c.attr(style="dashed", color="blue")
+                for n in group:
+                    node = graph[n]
+                    c.node(n, node.label, **node.dot_attrs)
 
     return dot
 

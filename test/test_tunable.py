@@ -1,8 +1,9 @@
-from pickle import dumps
+import pickle
 from pytest import raises
 from tuneit.graph import visualize, Node
 from tuneit.tunable import *
-from tuneit.tunable import Tunable
+from tuneit.tunable import Tunable, Data
+import testfixtures
 
 
 class unpickable:
@@ -27,7 +28,6 @@ def test_object():
     assert a.key != Object(unpickable()).key
 
     one = Object(1, deps=zero)
-    assert zero.key in one.dependencies
 
 
 def test_function():
@@ -43,8 +43,6 @@ def test_function():
 
     one = Object(1)
     fnc = Function(str, args=zero, kwargs={"one": one})
-    assert zero.key in fnc.dependencies
-    assert one.key in fnc.dependencies
 
     lst = Object([1, 2]).tunable()
     lst = lst.append(3)
@@ -87,4 +85,33 @@ def test_tunable():
     with raises(TypeError):
         bool(tunable(1))
 
-    assert dumps(a)
+    assert pickle.dumps(a)
+
+
+def test_pickle():
+    # Object
+    z = Object(2, label="z")
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # Data
+    z = Data("z")
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # Function
+    z = Function(str)
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert testfixtures.compare(z, b, strict=True) is None
+
+    # Tunable
+    x = data()
+    y = data()
+    z = x * y
+    a = pickle.dumps(z)
+    b = pickle.loads(a)
+    assert type(z) == type(b) == Tunable
+    assert testfixtures.compare(Node(z), Node(b), strict=True) is None

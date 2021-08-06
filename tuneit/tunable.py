@@ -6,6 +6,7 @@ __all__ = [
     "Tunable",
     "tunable",
     "Object",
+    "data",
     "function",
     "Function",
 ]
@@ -22,6 +23,11 @@ from dataclasses import dataclass
 from typing import Any
 from varname import varname as _varname, VarnameRetrievingError
 from .graph import Graph, Node, Key
+from lyncs_utils import isiterable
+import multiprocessing
+from time import time
+from contextlib import contextmanager
+import logging
 
 
 def varname(caller=1, default=None):
@@ -32,8 +38,23 @@ def varname(caller=1, default=None):
         return default
 
 
-def compute(obj, **kwargs):
+def compute(obj, timeout=None, **kwargs):
     "Compute the value of a tunable object"
+    if timeout:
+        raise NotImplementedError
+        kwargs["queue"] = multiprocessing.Queue()
+        p = multiprocessing.Process(target=compute, args=(obj,), kwargs=kwargs)
+        p.start()
+        p.join(timeout)
+        if p.exitcode is None:
+            p.terminate()
+            raise RuntimeError("Timeout")
+        if p.exitcode < 0:
+            raise RuntimeError(f"The process was terminated by signal {abs(exitcode)}.")
+        if not kwargs["queue"].empty():
+            obj = kwargs["queue"].get()
+        return obj
+
     kwargs.setdefault("maxiter", 3)
     if kwargs["maxiter"] <= 0:
         return obj
@@ -41,12 +62,10 @@ def compute(obj, **kwargs):
         kwargs.setdefault("graph", Node(obj).graph)
     if isinstance(obj, Key) and not isinstance(obj, Node):
         obj = kwargs["graph"][obj].value
-    try:
+    if hasattr(obj, "__compute__"):
         obj = obj.__compute__(**kwargs)
         kwargs["maxiter"] -= 1
         obj = compute(obj, **kwargs)
-    except AttributeError:
-        pass
     return obj
 
 
@@ -74,6 +93,7 @@ class Object:
     deps: Any = None
     label: str = None
     uid: Any = None
+    precompute: bool = False
 
     @classmethod
     def extract_deps(cls, deps):
@@ -124,13 +144,13 @@ class Object:
         "Returns a tunable object"
         return Tunable(self)
 
-    @property
-    def dependencies(self):
-        "Returns the list of dependencies for the Object"
-        return Node(self.tunable()).dependencies
-
     def copy(self, **kwargs):
         "Returns a copy of self"
+        # TODO: improve copy.. it should copy automatically all the data
+        # tmp = copy(self)
+        # for key, val in kwargs.items():
+        #   setattr(tmp, key, val)
+        # return tmp
         kwargs.setdefault("deps", self.deps)
         kwargs.setdefault("label", self.label)
         kwargs.setdefault("uid", self.uid)
@@ -171,11 +191,57 @@ class Object:
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="rect")
+        attrs = dict(shape="rect")
+        if self.precompute:
+            attrs["style"] = "filled"
+            attrs["color"] = "lightblue2"
+        return attrs
 
 
 Object.__eq2__ = Object.__eq__
 Object.__eq__ = lambda self, value: self.obj == value or self.__eq2__(value)
+
+
+def data(value=None, label=None, **kwargs):
+    """
+    A tunable function call.
+
+    Parameters
+    ----------
+    label: str
+
+    """
+    label = label or varname()
+    return Data(value, label=label, **kwargs).tunable()
+
+
+@dataclass
+class Data(Object):
+    "A data input of the graph"
+
+    check: callable = None
+    info: callable = None
+
+    def copy(self, **kwargs):
+        "Returns a copy of self"
+        kwargs.setdefault("check", self.check)
+        kwargs.setdefault("info", self.info)
+        return super().copy(**kwargs)
+
+    def set(self, val):
+        if self.check:
+            if not self.check(val):
+                raise ValueError("Check did not return True")
+        self.obj = val
+
+    def get_info(self):
+        if self.info is None:
+            return None
+        if isiterable(self.info):
+            return {key: getattr(self.obj, key, None) for key in self.info}
+        if callable(self.info):
+            return self.info(self.obj)
+        raise TypeError("Unsupported type for info")
 
 
 def function(fnc, *args, **kwargs):
@@ -251,8 +317,17 @@ class Function(Object):
         cmpt = lambda obj: compute(obj, **kwargs)
         fnc = cmpt(super().__compute__(**kwargs))
         args = tuple(map(cmpt, self.args))
+        context = kwargs.get("context", default_context)
+        log = kwargs.get("log", False)
         kwargs = dict(zip(self.kwargs.keys(), map(cmpt, self.kwargs.values())))
-        res = fnc(*args, **kwargs)
+        if log:
+            logging.basicConfig(level=logging.INFO)
+        else:
+            logging.basicConfig(level=logging.WARNING)
+        if context is None:
+            context = empty_context
+        with context(self.key):
+            res = fnc(*args, **kwargs)
         if res is None:
             if ismethod(fnc) or fnc is setattr:
                 return args[0]
@@ -295,12 +370,26 @@ class Function(Object):
 
     @property
     def __dot_attrs__(self):
-        return dict(shape="oval")
+        attrs = super().__dot_attrs__
+        attrs["shape"] = "oval"
+        return attrs
 
 
 def callattr(self, key, *args, **kwargs):
     "Get attribute from self and then calls it with args, kwargs"
     return getattr(self, key)(*args, **kwargs)
+
+
+@contextmanager
+def default_context(key):
+    start = time()
+    yield
+    logging.info(f"{key}:{time()-start}")
+
+
+@contextmanager
+def empty_context(key):
+    yield
 
 
 class Tunable(Node, bind=False):
@@ -325,11 +414,15 @@ class Tunable(Node, bind=False):
             and len(tmp.args) == 2
             and not tmp.kwargs
         ):
-            value = Function(callattr, args=tmp.args + args, kwargs=kwargs)
             graph = Graph(self).copy()
             del graph[Key(self)]
-            graph[value.key] = value
-            return Tunable(graph[value.key])
+            node = graph[tmp.args[0]]
+            return function(callattr, node, tmp.args[1], *args, **kwargs)
+            # value = Function(callattr, args=tmp.args + args, kwargs=kwargs)
+            # graph = Graph(self).copy()
+            # del graph[Key(self)]
+            # graph[value.key] = value
+            # return Tunable(graph[value.key])
         return function(Tunable(Node(self).copy()), *args, **kwargs)
 
     def __repr__(self):
@@ -343,9 +436,15 @@ class Tunable(Node, bind=False):
     def __getstate__(self):
         return Node(self).key
 
+    def __reduce__(self):
+        return type(self), (Node(self),)
+
     def __compute__(self, **kwargs):
         # pylint: disable=W0613
         return Node(self).value
+
+    def __iter__(self):
+        raise TypeError("A tunable object is not iterable")
 
 
 def default_operator(fnc):
